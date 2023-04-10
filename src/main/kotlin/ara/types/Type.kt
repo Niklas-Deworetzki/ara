@@ -2,22 +2,57 @@ package ara.types
 
 sealed class Type {
 
-    data class Variable(
-        var type: Type? = null
-    ) : Type()
+    abstract operator fun contains(other: Variable): Boolean
+
+    data class Variable(var type: Type? = null) : Type() {
+
+        inline fun <T> fold(zero: T, function: (Type) -> T): T = when (type) {
+            null -> zero
+            else -> function(type!!)
+        }
+
+        override fun contains(other: Variable): Boolean =
+            fold(this === other) {
+                it.contains(other)
+            }
+
+        override fun equals(other: Any?): Boolean {
+            if (type != null) {
+                return type!! == other
+            } else if (other is Variable) {
+                return other.fold(this === other, this::equals)
+            }
+            return false
+        }
+
+        override fun hashCode(): Int = fold(0) {
+            it.hashCode()
+        }
+    }
 
 
-    object Integer : Type()
+    object Integer : Type() {
+        override fun contains(other: Variable): Boolean = false
+    }
 
-    object Boolean : Type()
+    object Comparison : Type() {
+        override fun contains(other: Variable): Boolean = false
+    }
 
     data class Reference(
         val base: Type
-    ) : Type()
+    ) : Type() {
+        override fun contains(other: Variable): Boolean =
+            base.contains(other)
+    }
 
     data class Structure(
         val members: List<Member>
-    ) : Type()
+    ) : Type() {
+        override fun contains(other: Variable): Boolean = members.any {
+            it.type.contains(other)
+        }
+    }
 
     data class Member(
         val name: String,

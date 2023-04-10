@@ -3,7 +3,7 @@ package ara.analysis
 import ara.syntax.Syntax
 import ara.types.Type
 
-class LocalDeclarationAnalysis(override val program: Syntax.Program) : Analysis<Unit>() {
+class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
     private lateinit var currentScope: MutableMap<Syntax.Identifier, Type>
 
     override fun runAnalysis() = program.declarations

@@ -6,16 +6,20 @@ import ara.syntax.Syntax
 import org.fusesource.jansi.Ansi
 
 abstract class Analysis<T> {
-    abstract val program: Syntax.Program
-
     abstract fun runAnalysis(): T
 
+    protected inline fun proceedAnalysis(action: () -> Unit) {
+        if (!hasReportedErrors) action()
+    }
 
-    private val _reportedMessages: MutableList<Message> = mutableListOf()
 
-    val reportedMessages: List<Message>
-        get() = _reportedMessages
+    private val _reportedErrors: MutableList<Message> = mutableListOf()
 
+    val reportedErrors: List<Message>
+        get() = _reportedErrors
+
+    val hasReportedErrors: Boolean
+        get() = _reportedErrors.isNotEmpty()
 
     private fun mkErrorMessage(message: String, range: Range?): Message = Message(
         Ansi.Color.RED,
@@ -24,12 +28,17 @@ abstract class Analysis<T> {
         range
     )
 
+    fun reportError(message: Message) {
+        _reportedErrors.add(message)
+    }
+
     fun reportError(message: String) =
-        _reportedMessages.add(mkErrorMessage(message, null))
+        reportError(mkErrorMessage(message, null))
 
     fun reportError(range: Range, message: String) =
-        _reportedMessages.add(mkErrorMessage(message, range))
+        reportError(mkErrorMessage(message, range))
 
     fun reportError(syntax: Syntax, message: String) =
-        _reportedMessages.add(mkErrorMessage(message, syntax.range))
+        reportError(mkErrorMessage(message, syntax.range))
 }
+

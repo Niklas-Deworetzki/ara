@@ -3,7 +3,6 @@ package ara.syntax
 import ara.Direction
 import ara.position.Range
 import ara.reporting.Message
-import ara.types.Type
 
 sealed class Syntax {
     var range: Range? = null
@@ -22,7 +21,7 @@ sealed class Syntax {
 
     data class TypeDeclaration(
         override val name: Identifier,
-        val type: TypeExpression
+        val type: Type
     ) : Declaration()
 
     data class RoutineDeclaration(
@@ -31,12 +30,12 @@ sealed class Syntax {
         val outputParameters: List<Parameter>,
         val body: List<Instruction>
     ) : Declaration() {
-        lateinit var localScope: Map<Identifier, Type>
+        lateinit var localScope: Map<Identifier, ara.types.Type>
     }
 
     data class Parameter(
         val name: Identifier,
-        val type: TypeExpression
+        val type: Type
     ) : Syntax()
 
     /**
@@ -124,7 +123,7 @@ sealed class Syntax {
      */
     data class AllocationExpression(
         val direction: Direction,
-        val type: TypeExpression
+        val type: Type
     ) : Expression()
 
     /**
@@ -152,7 +151,7 @@ sealed class Syntax {
      */
     data class TypedStorage(
         val storage: Storage,
-        val type: TypeExpression
+        val type: Type
     ) : Storage()
 
     /**
@@ -205,22 +204,22 @@ sealed class Syntax {
     }
 
 
-    sealed class TypeExpression : Syntax()
+    sealed class Type : Syntax()
 
     data class NamedType(
         val name: Identifier
-    ) : TypeExpression()
+    ) : Type()
 
     data class ReferenceType(
-        val baseType: TypeExpression
-    ) : TypeExpression()
+        val baseType: Type
+    ) : Type()
 
     data class StructureType(
         val members: List<Member>
-    )
+    ) : Type()
 
     data class Member(
         val name: Identifier,
-        val type: TypeExpression
+        val type: Type
     ) : Syntax()
 }

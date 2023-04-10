@@ -121,7 +121,7 @@ class LocalDeclarationAnalysisTest {
 
         analysis.runAnalysis()
 
-        analysis.reportedMessages.shouldNotBeEmpty()
+        analysis.reportedErrors.shouldNotBeEmpty()
     }
 
     private fun shouldNotReportError(routineDeclaration: Syntax.RoutineDeclaration): Map<Syntax.Identifier, Type> {
@@ -132,7 +132,7 @@ class LocalDeclarationAnalysisTest {
 
         analysis.runAnalysis()
 
-        analysis.reportedMessages.shouldBeEmpty()
+        analysis.reportedErrors.shouldBeEmpty()
         return routineDeclaration.localScope
     }
 }

@@ -1,6 +1,7 @@
 package ara.syntax
 
 import ara.Direction
+import ara.analysis.TypeMap
 import ara.position.Range
 import ara.reporting.Message
 
@@ -30,12 +31,14 @@ sealed class Syntax {
         val outputParameters: List<Parameter>,
         val body: List<Instruction>
     ) : Declaration() {
-        lateinit var localScope: Map<Identifier, ara.types.Type>
+        lateinit var localScope: TypeMap
+        lateinit var inputParameterTypes: List<ara.types.Type>
+        lateinit var outputParameterTypes: List<ara.types.Type>
     }
 
     data class Parameter(
         val name: Identifier,
-        val type: Type
+        val type: Type?
     ) : Syntax()
 
     /**

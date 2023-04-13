@@ -31,13 +31,13 @@ sealed class Type {
     }
 
 
-    object Integer : Type() {
+    abstract class BuiltinType : Type() {
         override fun contains(other: Variable): Boolean = false
     }
 
-    object Comparison : Type() {
-        override fun contains(other: Variable): Boolean = false
-    }
+    object Integer : BuiltinType()
+
+    object Comparison : BuiltinType()
 
     data class Reference(
         val base: Type

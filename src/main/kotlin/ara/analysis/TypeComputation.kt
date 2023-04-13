@@ -35,14 +35,12 @@ class TypeComputation(
     companion object {
 
         fun Type.normalize(): Type = when (this) {
-            is Type.Integer ->
-                Type.Integer
-
-            is Type.Comparison ->
-                Type.Comparison
+            is Type.BuiltinType ->
+                this
 
             is Type.Variable ->
-                this.type!!.normalize()
+                this.type?.normalize()
+                    ?: throw IllegalStateException("Cannot normalize uninstantiated type variable!")
 
             is Type.Reference -> {
                 val normalizedBase = this.base.normalize()
@@ -55,6 +53,28 @@ class TypeComputation(
                 }
                 Type.Structure(normalizedMembers)
             }
+        }
+
+        tailrec fun Type.getMemberType(name: String): Type? = when (this) {
+            is Type.Variable ->
+                this.type?.getMemberType(name)
+
+            is Type.Structure ->
+                members.firstOrNull { it.name == name }?.type
+
+            else ->
+                null
+        }
+
+        fun Type.unpackReference(): Type? = when (this) {
+            is Type.Variable ->
+                this.type?.unpackReference()
+
+            is Type.Reference ->
+                this.base
+
+            else ->
+                null
         }
 
         fun unify(a: Type, b: Type): TypeError? {

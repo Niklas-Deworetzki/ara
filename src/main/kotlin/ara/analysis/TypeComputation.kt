@@ -34,27 +34,6 @@ class TypeComputation(
 
     companion object {
 
-        fun Type.normalize(): Type = when (this) {
-            is Type.BuiltinType ->
-                this
-
-            is Type.Variable ->
-                this.type?.normalize()
-                    ?: throw IllegalStateException("Cannot normalize uninstantiated type variable!")
-
-            is Type.Reference -> {
-                val normalizedBase = this.base.normalize()
-                Type.Reference(normalizedBase)
-            }
-
-            is Type.Structure -> {
-                val normalizedMembers = this.members.map {
-                    Type.Member(it.name, it.type.normalize())
-                }
-                Type.Structure(normalizedMembers)
-            }
-        }
-
         tailrec fun Type.getMemberType(name: String): Type? = when (this) {
             is Type.Variable ->
                 this.type?.getMemberType(name)
@@ -66,7 +45,7 @@ class TypeComputation(
                 null
         }
 
-        fun Type.unpackReference(): Type? = when (this) {
+        tailrec fun Type.unpackReference(): Type? = when (this) {
             is Type.Variable ->
                 this.type?.unpackReference()
 

@@ -4,8 +4,10 @@ sealed class Type {
 
     abstract operator fun contains(other: Variable): Boolean
 
-    data class Variable(var type: Type? = null) : Type() {
+    abstract fun isInstantiated(): Boolean
 
+
+    data class Variable(var type: Type? = null) : Type() {
         inline fun <T> fold(zero: T, function: (Type) -> T): T = when (type) {
             null -> zero
             else -> function(type!!)
@@ -15,6 +17,9 @@ sealed class Type {
             fold(this === other) {
                 it.contains(other)
             }
+
+        override fun isInstantiated(): Boolean =
+            type != null
 
         override fun equals(other: Any?): Boolean {
             if (type != null) {
@@ -33,25 +38,29 @@ sealed class Type {
 
     abstract class BuiltinType : Type() {
         override fun contains(other: Variable): Boolean = false
+        override fun isInstantiated(): Boolean = true
     }
 
     object Integer : BuiltinType()
 
     object Comparison : BuiltinType()
 
-    data class Reference(
-        val base: Type
-    ) : Type() {
+
+    data class Reference(val base: Type) : Type() {
         override fun contains(other: Variable): Boolean =
             base.contains(other)
+
+        override fun isInstantiated(): Boolean =
+            base.isInstantiated()
     }
 
-    data class Structure(
-        val members: List<Member>
-    ) : Type() {
-        override fun contains(other: Variable): Boolean = members.any {
-            it.type.contains(other)
-        }
+
+    data class Structure(val members: List<Member>) : Type() {
+        override fun contains(other: Variable): Boolean =
+            members.any { it.type.contains(other) }
+
+        override fun isInstantiated(): Boolean =
+            members.any { it.type.isInstantiated() }
     }
 
     data class Member(

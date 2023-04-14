@@ -1,6 +1,5 @@
 package ara.analysis
 
-import ara.analysis.TypeComputation.Companion.normalize
 import ara.syntax.Syntax
 import ara.types.Type
 
@@ -18,13 +17,7 @@ class TypeDeclarationAnalysis(private val program: Syntax.Program) : Analysis<Ty
                 computeDeclaredType(declaredTypes, declaration)
             }
         }
-        return if (!hasReportedErrors) {
-            declaredTypes.mapValues {
-                it.value.normalize()
-            }
-        } else {
-            emptyMap()
-        }
+        return declaredTypes
     }
 
     private fun initializeTypeMap(

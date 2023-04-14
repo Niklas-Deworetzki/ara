@@ -3,7 +3,6 @@ package ara.analysis
 import ara.Direction
 import ara.analysis.TypeComputation.Companion.getMemberType
 import ara.analysis.TypeComputation.Companion.unpackReference
-import ara.analysis.TypeComputation.Companion.normalize
 import ara.analysis.TypeComputation.Companion.unify
 import ara.syntax.Syntax
 import ara.syntax.Syntax.BinaryOperator.*
@@ -25,41 +24,22 @@ class LocalTypeAnalysis(
         declaredRoutines.forEach {
             InstructionChecker(it).check()
         }
+        declaredRoutines.forEach {
+            ensureVariablesAreTypes(it)
+        }
+    }
+
+    private fun ensureVariablesAreTypes(routine: Syntax.RoutineDeclaration) {
+        routine.localScope.forEach { (name, type) ->
+            if (!type.isInstantiated()) {
+                reportError(name, "Type of $name cannot be inferred. Perhaps type annotations are missing?")
+            }
+        }
     }
 
 
     inner class ParameterTypeInitializer(private val routine: Syntax.RoutineDeclaration) {
-
         fun initialize() {
-            val typeHints = collectTypeHints()
-            reportMissingTypeHints(typeHints)
-            determineTypes()
-
-            proceedAnalysis {
-                routine.inputParameterTypes = normalize(routine.inputParameters)
-                routine.outputParameterTypes = normalize(routine.outputParameters)
-            }
-        }
-
-        private fun collectTypeHints(): Map<Syntax.Identifier, List<Syntax.Type>> {
-            val typeHints = mutableMapOf<Syntax.Identifier, MutableList<Syntax.Type>>()
-            for (parameter in routine.inputParameters + routine.outputParameters) {
-                val hintBuffer = typeHints.getOrPut(parameter.name) { mutableListOf() }
-                if (parameter.type != null)
-                    hintBuffer.add(parameter.type)
-            }
-            return typeHints
-        }
-
-        private fun reportMissingTypeHints(typeHints: Map<Syntax.Identifier, List<Syntax.Type>>) {
-            typeHints.forEach { (parameter, hints) ->
-                if (hints.isEmpty()) {
-                    reportError(parameter, "Parameter $parameter must have a declared type.")
-                }
-            }
-        }
-
-        private fun determineTypes() {
             for (parameter in routine.inputParameters + routine.outputParameters) {
                 if (parameter.type == null) continue
 
@@ -69,16 +49,9 @@ class LocalTypeAnalysis(
                 checkTypes(parameter, declaredType, computedType)
             }
         }
-
-        private fun normalize(parameters: List<Syntax.Parameter>): List<Type> =
-            parameters.map {
-                routine.localScope[it.name]?.normalize()!!
-            }
     }
 
-
     inner class InstructionChecker(private val routine: Syntax.RoutineDeclaration) {
-
         fun check() {
             for (instruction in routine.body) {
                 when (instruction) {

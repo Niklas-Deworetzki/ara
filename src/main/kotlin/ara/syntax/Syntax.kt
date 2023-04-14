@@ -2,6 +2,7 @@ package ara.syntax
 
 import ara.Direction
 import ara.analysis.TypeMap
+import ara.control.ControlGraph
 import ara.position.Range
 import ara.reporting.Message
 
@@ -34,6 +35,7 @@ sealed class Syntax {
         lateinit var localScope: TypeMap
         lateinit var inputParameterTypes: List<ara.types.Type>
         lateinit var outputParameterTypes: List<ara.types.Type>
+        lateinit var graph: ControlGraph
     }
 
     data class Parameter(
@@ -45,6 +47,11 @@ sealed class Syntax {
      * Abstract superclass of all instruction variants.
      */
     sealed class Instruction : Syntax()
+
+    sealed interface Control {
+        val direction: Direction
+        fun labels(): Collection<Identifier>
+    }
 
     /**
      * An assignment of the form
@@ -67,9 +74,11 @@ sealed class Syntax {
      * ```
      */
     data class Unconditional(
-        val direction: Direction,
+        override val direction: Direction,
         val label: Identifier
-    ) : Instruction()
+    ) : Instruction(), Control {
+        override fun labels(): Collection<Identifier> = listOf(label)
+    }
 
     /**
      * A conditional entry- or exit-point
@@ -79,11 +88,13 @@ sealed class Syntax {
      * ```
      */
     data class Conditional(
-        val direction: Direction,
+        override val direction: Direction,
         val lhsLabel: Identifier,
         val rhsLabel: Identifier,
         val comparison: ArithmeticExpression
-    ) : Instruction()
+    ) : Instruction(), Control {
+        override fun labels(): Collection<Identifier> = listOf(lhsLabel, rhsLabel)
+    }
 
     /**
      * A call or uncall instruction

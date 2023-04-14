@@ -9,4 +9,8 @@ object Collections {
             action(xsIterator.next(), ysIterator.next())
         }
     }
+
+    fun <T> sublist(list: List<T>, skipFront: Int, skipEnd: Int): List<T> {
+        return list.subList(skipFront, list.size - skipEnd)
+    }
 }

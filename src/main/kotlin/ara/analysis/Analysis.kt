@@ -12,6 +12,14 @@ abstract class Analysis<T> {
         if (!hasReportedErrors) action()
     }
 
+    fun <R> includeAnalysis(analysis: Analysis<R>): R {
+        val result = analysis.runAnalysis()
+        if (analysis.hasReportedErrors) {
+            analysis.reportedErrors.forEach(::reportError)
+        }
+        return result
+    }
+
 
     private val _reportedErrors: MutableList<Message> = mutableListOf()
 

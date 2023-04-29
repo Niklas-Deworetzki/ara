@@ -1,19 +1,19 @@
 package ara.analysis
 
 import ara.syntax.Syntax
-import ara.types.Type
+import ara.types.Environment
 
 class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
-    private lateinit var currentScope: MutableMap<Syntax.Identifier, Type>
+    private lateinit var currentScope: Environment
 
-    override fun runAnalysis() = program.declarations
-        .filterIsInstance<Syntax.RoutineDeclaration>()
+    override fun runAnalysis() = program.definitions
+        .filterIsInstance<Syntax.RoutineDefinition>()
         .forEach { routine ->
-            routine.localScope = initializeLocalScope(routine)
+            routine.localEnvironment = initializeLocalScope(routine)
         }
 
-    private fun initializeLocalScope(routine: Syntax.RoutineDeclaration): Map<Syntax.Identifier, Type> {
-        currentScope = mutableMapOf()
+    private fun initializeLocalScope(routine: Syntax.RoutineDefinition): Environment {
+        currentScope = Environment(program.environment)
         val successfulIn = declareFromParameterList(routine.inputParameters)
         val successfulOut = declareFromParameterList(routine.outputParameters)
 
@@ -23,19 +23,9 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
         return currentScope
     }
 
-    private fun declare(name: Syntax.Identifier) {
-        currentScope.computeIfAbsent(name) {
-            Type.Variable()
-        }
-    }
-
-    private tailrec fun declare(expression: Syntax.Expression): Unit = when (expression) {
+    private tailrec fun declare(expression: Syntax.ResourceExpression): Unit = when (expression) {
         is Syntax.NamedStorage ->
-            declare(expression.name)
-
-
-        is Syntax.ReferenceExpression ->
-            declare(expression.storage)
+            currentScope.declareVariable(expression.name)
 
         is Syntax.TypedStorage ->
             declare(expression.storage)
@@ -43,11 +33,7 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
         is Syntax.MemberAccess ->
             declare(expression.storage)
 
-
         is Syntax.IntegerLiteral ->
-            Unit
-
-        is Syntax.AllocationExpression ->
             Unit
     }
 
@@ -62,7 +48,7 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
 
                 reportError(parameter, "Parameter ${parameter.name} was declared multiple times.")
             } else {
-                declare(parameter.name)
+                currentScope.declareVariable(parameter.name)
             }
         }
 

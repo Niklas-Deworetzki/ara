@@ -1,57 +1,64 @@
 package ara.analysis
 
 import ara.Direction
-import ara.analysis.TypeComputation.Companion.getMemberType
-import ara.analysis.TypeComputation.Companion.unpackReference
-import ara.analysis.TypeComputation.Companion.unify
+import ara.reporting.Message
 import ara.syntax.Syntax
 import ara.syntax.Syntax.BinaryOperator.*
+import ara.types.Environment
 import ara.types.Type
+import ara.types.Type.Algebra.Companion.evaluate
+import ara.types.TypeUnification
+import ara.types.TypeUnification.unify
 import ara.utils.Collections.combineWith
 
-class LocalTypeAnalysis(
-    private val program: Syntax.Program,
-    private val routineMap: RoutineMap,
-    private val typeMap: TypeMap
-) : Analysis<Unit>() {
+class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
 
     override fun runAnalysis() {
-        val declaredRoutines = program.declarations.filterIsInstance<Syntax.RoutineDeclaration>()
+        val definedRoutines = program.definitions.filterIsInstance<Syntax.RoutineDefinition>()
 
-        declaredRoutines.forEach {
-            ParameterTypeInitializer(it).initialize()
-        }
-        declaredRoutines.forEach {
-            InstructionChecker(it).check()
-        }
-        declaredRoutines.forEach {
-            ensureVariablesAreTypes(it)
-        }
-    }
+        definedRoutines.forEach {
+            ParameterListTyper(it).typeParameters()
 
-    private fun ensureVariablesAreTypes(routine: Syntax.RoutineDeclaration) {
-        routine.localScope.forEach { (name, type) ->
-            if (!type.isInstantiated()) {
-                reportError(name, "Type of $name cannot be inferred. Perhaps type annotations are missing?")
+            val parameterNames = (it.inputParameters + it.outputParameters).map { parameter -> parameter.name }.toSet()
+            ensureVariablesHaveInstantiatedTypes(it.localEnvironment, parameterNames)
+        }
+        proceedAnalysis { // We can't proceed if there are not inferred types in parameter lists, as they would be instantiated on calls which could cause hard-to-locate errors.
+            definedRoutines.forEach {
+                InstructionTypeChecker(it).check()
+            }
+            definedRoutines.forEach {
+                val variableNames = it.localEnvironment.variables.map { variable -> variable.key }.toSet()
+                ensureVariablesHaveInstantiatedTypes(it.localEnvironment, variableNames)
             }
         }
     }
 
+    private fun Syntax.Type.computedType(environment: Environment): Type =
+        includeAnalysis(TypeComputation(environment, this))
 
-    inner class ParameterTypeInitializer(private val routine: Syntax.RoutineDeclaration) {
-        fun initialize() {
+
+    private fun ensureVariablesHaveInstantiatedTypes(environment: Environment, names: Set<Syntax.Identifier>) {
+        val notInstantiatedNames = names.filterNot { environment.getVariable(it)!!.isInstantiated() }
+        for (name in notInstantiatedNames) {
+            reportError(name, "Type of variable $name cannot be inferred. Perhaps some type annotations are missing?")
+        }
+    }
+
+
+    private inner class ParameterListTyper(private val routine: Syntax.RoutineDefinition) {
+        fun typeParameters() {
             for (parameter in routine.inputParameters + routine.outputParameters) {
                 if (parameter.type == null) continue
 
-                val declaredType = routine.localScope[parameter.name]!!
-                val computedType = computeType(parameter.type)
+                val declaredType = routine.localEnvironment.getVariable(parameter.name)!!
+                val computedType = parameter.type.computedType(routine.localEnvironment)
 
-                checkTypes(parameter, declaredType, computedType)
+                declaredType.shouldBe(computedType, parameter)
             }
         }
     }
 
-    inner class InstructionChecker(private val routine: Syntax.RoutineDeclaration) {
+    private inner class InstructionTypeChecker(private val routine: Syntax.RoutineDefinition) {
         fun check() {
             for (instruction in routine.body) {
                 when (instruction) {
@@ -62,7 +69,7 @@ class LocalTypeAnalysis(
                         checkCall(instruction)
 
                     is Syntax.Conditional ->
-                        Unit
+                        checkConditional(instruction)
 
                     is Syntax.Unconditional ->
                         Unit
@@ -71,150 +78,190 @@ class LocalTypeAnalysis(
         }
 
         private fun checkAssignment(assignment: Syntax.Assignment) {
-            val srcType = computeType(assignment.src)
-            val dstType = computeType(assignment.dst)
+            val srcType = assignment.src.computedType()
+            val dstType = assignment.dst.computedType()
 
-            checkTypes(assignment, srcType, dstType)
+            if (assignment.arithmetic == null) {
+                srcType.shouldBe(dstType, assignment) {
+                    "Source and destination have different types."
+                }
 
-            if (assignment.arithmetic != null) {
-                val arithmeticType = computeType(assignment.arithmetic.value)
-                checkTypes(assignment.arithmetic, Type.Integer, arithmeticType)
+            } else {
+                srcType.shouldBe(Type.Integer, assignment.src) {
+                    "Assignment source is not of type ${Type.Integer} as required by modification statement."
+                }
+                dstType.shouldBe(Type.Integer, assignment.dst) {
+                    "Assignment destination is not of type ${Type.Integer} as required by modification statement."
+                }
+
+                val arithmeticType = assignment.arithmetic.value.computedType()
+                arithmeticType.shouldBe(Type.Integer, assignment.arithmetic) {
+                    "Arithmetic expression is not of type ${Type.Integer} as required by modification statement."
+                }
             }
         }
 
         private fun checkCall(call: Syntax.Call) {
-            val calledRoutine = routineMap[call.routine]
+            val calledRoutine = routine.localEnvironment.getRoutine(call.routine)
             if (calledRoutine == null) {
                 reportError(call.routine, "Unknown routine ${call.routine}.")
                 return
             }
 
-            val (expectedInputs, expectedOutputs) = getExpectedParameters(calledRoutine, call.direction)
-            checkPassedArguments(call.srcList, expectedInputs)
-            checkPassedArguments(call.dstList, expectedOutputs)
+            when (call.direction) {
+                Direction.FORWARD -> {
+                    checkPassedArguments(call.srcList, calledRoutine.inputParameterTypes)
+                    checkPassedArguments(call.dstList, calledRoutine.outputParameterTypes)
+                }
+
+                Direction.BACKWARD -> {
+                    checkPassedArguments(call.srcList, calledRoutine.outputParameterTypes)
+                    checkPassedArguments(call.dstList, calledRoutine.inputParameterTypes)
+                }
+            }
         }
 
-        private fun checkPassedArguments(arguments: List<Syntax.Expression>, expectedTypes: List<Type>) {
+        private fun checkPassedArguments(arguments: List<Syntax.ResourceExpression>, expectedTypes: List<Type>) {
             combineWith(arguments, expectedTypes) { argument, expectedType ->
-                val actualType = computeType(argument)
-                checkTypes(argument, expectedType, actualType)
+                argument.computedType().shouldBe(expectedType, argument)
             }
         }
 
-        private fun getExpectedParameters(
-            calledRoutine: Syntax.RoutineDeclaration,
-            direction: Direction
-        ): Pair<List<Type>, List<Type>> =
-            when (direction) {
-                Direction.FORWARD -> Pair(
-                    calledRoutine.inputParameterTypes,
-                    calledRoutine.outputParameterTypes
-                )
-
-                Direction.BACKWARD -> Pair(
-                    calledRoutine.outputParameterTypes,
-                    calledRoutine.inputParameterTypes
-                )
+        private fun checkConditional(conditional: Syntax.Conditional) {
+            val comparisonType = conditional.comparison.computedType()
+            comparisonType.shouldBe(Type.Comparison, conditional.comparison) {
+                "Expression is not of type ${Type.Comparison} as required by conditional instruction."
             }
+        }
 
-        private fun computeType(expression: Syntax.Expression): Type = when (expression) {
+        private fun Syntax.ResourceExpression.computedType(): Type = when (this) {
             is Syntax.IntegerLiteral ->
                 Type.Integer
 
-            is Syntax.AllocationExpression ->
-                Type.Reference(computeType(expression.type))
-
-            is Syntax.ReferenceExpression -> {
-                val referenceType = computeType(expression.storage)
-                val unpackedReference = referenceType.unpackReference()
-                if (unpackedReference == null) {
-                    reportError(expression, "Cannot load value, since it is not a reference.")
-                    Type.Variable()
-                } else unpackedReference
-            }
-
             is Syntax.MemberAccess -> {
-                val structureType = computeType(expression.storage)
-                val memberType = structureType.getMemberType(expression.member.name)
+                val structureType = this.storage.computedType()
+                val memberType = structureType.getMemberType(this.member.name)
                 if (memberType == null) {
-                    reportError(expression.member, "Member ${expression.member} is not defined.")
+                    reportError(this.member, "Type does not have a member named ${this.member}.")
                     Type.Variable()
                 } else memberType
             }
 
-            is Syntax.NamedStorage -> {
-                val type = routine.localScope[expression.name]
-                if (type == null) {
-                    reportError(expression, "Unknown variable ${expression.name}")
+            is Syntax.NamedStorage -> when (val type = routine.localEnvironment.getVariable(this.name)) {
+                null -> {
+                    reportError(this, "Unknown variable ${this.name}")
                     Type.Variable()
-                } else type
+                }
+
+                else -> type
             }
 
             is Syntax.TypedStorage -> {
-                val storageType = computeType(expression.storage)
-                val hintedType = computeType(expression.type)
-                checkTypes(expression, hintedType, storageType)
+                val storageType = this.storage.computedType()
+                val hintedType = this.type.computedType(routine.localEnvironment)
+                storageType.shouldBe(hintedType, this)
                 hintedType
             }
         }
 
-        private fun computeType(expression: Syntax.ArithmeticExpression): Type = when (expression) {
+        private fun Syntax.ArithmeticExpression.computedType(): Type = when (this) {
             is Syntax.ArithmeticBinary -> {
-                val lhsType = computeType(expression.lhs)
-                val rhsType = computeType(expression.rhs)
+                val lhsType = this.lhs.computedType()
+                val rhsType = this.rhs.computedType()
 
-                when (expression.operator) {
+                when (this.operator) {
                     ADD, SUB, XOR, MUL, DIV, MOD -> {
-                        checkTypes(expression.lhs, Type.Integer, lhsType)
-                        checkTypes(expression.rhs, Type.Integer, rhsType)
+                        lhsType.shouldBe(Type.Integer, this.lhs) {
+                            "Operand is not of type ${Type.Integer} as required by arithmetic operator."
+                        }
+                        rhsType.shouldBe(Type.Integer, this.rhs) {
+                            "Operand is not of type ${Type.Integer} as required by arithmetic operator."
+                        }
                         Type.Integer
                     }
 
                     LST, LSE, GRT, GRE -> {
-                        checkTypes(expression.lhs, Type.Integer, lhsType)
-                        checkTypes(expression.rhs, Type.Integer, rhsType)
+                        lhsType.shouldBe(Type.Integer, this.lhs) {
+                            "Operand is not of type ${Type.Integer} as required by comparison operator."
+                        }
+                        rhsType.shouldBe(Type.Integer, this.rhs) {
+                            "Operand is not of type ${Type.Integer} as required by comparison operator."
+                        }
                         Type.Comparison
                     }
 
                     EQU, NEQ -> {
-                        checkTypes(expression, lhsType, rhsType)
+                        lhsType.shouldBe(rhsType, this) {
+                            "Operands are not of the same type as required by equality operator."
+                        }
                         Type.Comparison
                     }
                 }
             }
 
             is Syntax.ArithmeticValue ->
-                computeType(expression.value)
+                this.value.computedType()
         }
     }
 
-    private fun computeType(type: Syntax.Type): Type {
-        val context = TypeComputation(typeMap, type)
-        val result = context.runAnalysis()
 
-        context.reportedErrors
-            .forEach(::reportError)
+    private fun Type.shouldBe(expectedType: Type, position: Syntax, messageHint: (() -> String)? = null) {
+        val typeError = unify(this, expectedType) ?: return // Return if unification succeeds.
 
-        return result
+        val messageHints = mutableListOf<String>()
+        if (messageHint != null) messageHints.add(messageHint())
+
+        var currentTypeError = typeError
+        var foundCause: Boolean
+        do {
+            foundCause = false
+            when (currentTypeError) {
+                TypeUnification.Error.RecursiveType ->
+                    messageHints.add("Infinite type arising from constraints.")
+
+                is TypeUnification.Error.DifferentStructSize -> {
+                    messageHints.add("Structure types with different size.")
+                }
+
+                is TypeUnification.Error.DifferentMemberNames -> {
+                    val aMemberName = Message.quote(currentTypeError.aMember.name)
+                    val bMemberName = Message.quote(currentTypeError.bMember.name)
+                    messageHints.add("Structure types with different members at #${currentTypeError.index} (members $aMemberName and $bMemberName).")
+                }
+
+                is TypeUnification.Error.DifferentMemberTypes -> {
+                    val memberName = Message.quote(currentTypeError.aMember.name)
+                    messageHints.add("Structure types with different members at #${currentTypeError.index} (member $memberName).")
+                    currentTypeError = currentTypeError.cause
+                    foundCause = true
+                }
+
+                is TypeUnification.Error.NotUnifiable ->
+                    messageHints.add("Type ${currentTypeError.a} is not equal to ${currentTypeError.b}.")
+            }
+        } while (foundCause)
+        val message = messageHints.reduce { a, b ->
+            "$a${System.lineSeparator()} caused by: $b"
+        }
+        reportError(position, message)
     }
 
-    private fun checkTypes(syntax: Syntax, expectedType: Type, actualType: Type) {
-        val typeError = unify(actualType, expectedType) ?: return
-        when (typeError) {
-            TypeComputation.RecursiveType ->
-                reportError(syntax, "Unable to construct infinite type.")
+    fun Type.isInstantiated(): Boolean = TypeIsInstantiated.evaluate(this)
 
-            is TypeComputation.DifferentMemberNames ->
-                reportError(syntax, "Incompatible structure types. Fields #${typeError.index} differ in name.")
+    private object TypeIsInstantiated : Type.Algebra<Boolean> {
+        override fun builtin(builtin: Type.BuiltinType): Boolean = true
 
-            is TypeComputation.DifferentMemberTypes ->
-                reportError(syntax, "Incompatible structure types. Fields #${typeError.index} differ in type.")
+        override fun structure(memberNames: List<String>, memberValues: List<Boolean>): Boolean =
+            memberValues.all { it }
 
-            is TypeComputation.DifferentStructSize ->
-                reportError(syntax, "Incompatible structure types of different size.")
+        override fun uninitializedVariable(): Boolean = false
+    }
 
-            is TypeComputation.NotUnifiable ->
-                reportError(syntax, "Incompatible types.")
-        }
+    private fun Type.getMemberType(name: String): Type? = when (this) {
+        is Type.Structure ->
+            members.find { it.name == name }?.type
+
+        else ->
+            null
     }
 }

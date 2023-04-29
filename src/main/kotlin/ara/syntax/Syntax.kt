@@ -1,10 +1,10 @@
 package ara.syntax
 
 import ara.Direction
-import ara.analysis.TypeMap
 import ara.control.ControlGraph
 import ara.position.Range
 import ara.reporting.Message
+import ara.types.Environment
 
 sealed class Syntax {
     var range: Range? = null
@@ -13,26 +13,26 @@ sealed class Syntax {
         override fun toString(): String = Message.quote(name)
     }
 
-    data class Program(
-        val declarations: List<Declaration>
-    )
+    data class Program(val definitions: List<Definition>) {
+        lateinit var environment: Environment
+    }
 
-    sealed class Declaration : Syntax() {
+    sealed class Definition : Syntax() {
         abstract val name: Identifier
     }
 
-    data class TypeDeclaration(
+    data class TypeDefinition(
         override val name: Identifier,
         val type: Type
-    ) : Declaration()
+    ) : Definition()
 
-    data class RoutineDeclaration(
+    data class RoutineDefinition(
         override val name: Identifier,
         val inputParameters: List<Parameter>,
         val outputParameters: List<Parameter>,
         val body: List<Instruction>
-    ) : Declaration() {
-        lateinit var localScope: TypeMap
+    ) : Definition() {
+        lateinit var localEnvironment: Environment
         lateinit var inputParameterTypes: List<ara.types.Type>
         lateinit var outputParameterTypes: List<ara.types.Type>
         lateinit var graph: ControlGraph
@@ -61,8 +61,8 @@ sealed class Syntax {
      * ```
      */
     data class Assignment(
-        val dst: Expression,
-        val src: Expression,
+        val dst: ResourceExpression,
+        val src: ResourceExpression,
         val arithmetic: ArithmeticModifier?
     ) : Instruction()
 
@@ -104,17 +104,17 @@ sealed class Syntax {
      * ```
      */
     data class Call(
-        val dstList: List<Expression>,
-        val srcList: List<Expression>,
+        val dstList: List<ResourceExpression>,
+        val srcList: List<ResourceExpression>,
         val direction: Direction,
         val routine: Identifier
     ) : Instruction()
 
 
     /**
-     * Abstract superclass of all expression variants.
+     * An expression that can be used to initialize or finalize some resource.
      */
-    sealed class Expression : Syntax()
+    sealed class ResourceExpression : Syntax()
 
     /**
      * A literal integer. E.g.
@@ -124,38 +124,36 @@ sealed class Syntax {
      */
     data class IntegerLiteral(
         val value: Int
-    ) : Expression()
+    ) : ResourceExpression()
+
+//    /**
+//     * An expression allocating a new object in memory (during forward execution)
+//     * or deleting an object from memory (during backward direction). Objects are
+//     * always in a zeroed state.
+//     * ```
+//     *  new Type
+//     *  del Type
+//     * ```
+//     */
+//    data class AllocationExpression(
+//        val direction: Direction,
+//        val type: Type
+//    ) : Expression()
+//
+//    /**
+//     * An expression used to access in-memory values.
+//     * ```
+//     *  ~ Expr
+//     * ```
+//     */
+//    data class ReferenceExpression(
+//        val storage: Storage
+//    ) : Expression()
 
     /**
-     * An expression allocating a new object in memory (during forward execution)
-     * or deleting an object from memory (during backward direction). Objects are
-     * always in a zeroed state.
-     * ```
-     *  new Type
-     *  del Type
-     * ```
+     * A storage is some modifiable value (e.g. local on the stack frame or in global memory).
      */
-    data class AllocationExpression(
-        val direction: Direction,
-        val type: Type
-    ) : Expression()
-
-    /**
-     * An expression used to access in-memory values.
-     * ```
-     *  ~ Expr
-     * ```
-     */
-    data class ReferenceExpression(
-        val storage: Storage
-    ) : Expression()
-
-
-    /**
-     * Abstract superclass of all storage variants, which are used to
-     * describe either local or in-memory values.
-     */
-    sealed class Storage : Expression()
+    sealed class Storage : ResourceExpression()
 
     /**
      * Associates a variable with a type.
@@ -190,7 +188,12 @@ sealed class Syntax {
         val member: Identifier
     ) : Storage()
 
-
+    /**
+     * A modification made to some storage during an assignment.
+     * ```
+     *  MOD (expr)
+     * ```
+     */
     class ArithmeticModifier(
         val modificationOperator: ModificationOperator,
         val value: ArithmeticExpression
@@ -201,16 +204,25 @@ sealed class Syntax {
     }
 
 
+    /**
+     * An evaluable expression that neither initializes nor finalizes some storage.
+     */
     sealed class ArithmeticExpression : Syntax()
 
+    /**
+     * A binary expression.
+     */
     data class ArithmeticBinary(
-        val lhs: Expression,
+        val lhs: ResourceExpression,
         val operator: BinaryOperator,
-        val rhs: Expression
+        val rhs: ResourceExpression
     ) : ArithmeticExpression()
 
+    /**
+     *
+     */
     data class ArithmeticValue(
-        val value: Expression
+        val value: ResourceExpression
     ) : ArithmeticExpression()
 
     enum class BinaryOperator {
@@ -218,16 +230,28 @@ sealed class Syntax {
     }
 
 
+    /**
+     * An expression representing a type.
+     */
     sealed class Type : Syntax()
 
+    /**
+     * A type referenced by name.
+     */
     data class NamedType(
         val name: Identifier
     ) : Type()
 
-    data class ReferenceType(
-        val baseType: Type
-    ) : Type()
+//    /**
+//     * A type representing values in global memory.
+//     */
+//    data class ReferenceType(
+//        val baseType: Type
+//    ) : Type()
 
+    /**
+     * A type containing different members with own types.
+     */
     data class StructureType(
         val members: List<Member>
     ) : Type()

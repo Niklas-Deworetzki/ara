@@ -13,4 +13,8 @@ object Collections {
     fun <T> sublist(list: List<T>, skipFront: Int, skipEnd: Int): List<T> {
         return list.subList(skipFront, list.size - skipEnd)
     }
+
+    fun <T> symmetricDifference(a: Set<T>, b: Set<T>): Set<T> {
+        return (a - b) + (b - a)
+    }
 }

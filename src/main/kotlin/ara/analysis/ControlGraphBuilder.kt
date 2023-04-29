@@ -12,7 +12,7 @@ private typealias InstructionBuffer = MutableList<Syntax.Instruction>
 class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>() {
 
     override fun runAnalysis() {
-        for (routine in program.declarations.filterIsInstance<Syntax.RoutineDeclaration>()) {
+        for (routine in program.definitions.filterIsInstance<Syntax.RoutineDefinition>()) {
             val blocks = BlockExtractor(routine).extract()
             val graph = GraphConstructor(blocks).construct()
 
@@ -20,7 +20,7 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
         }
     }
 
-    inner class BlockExtractor(routine: Syntax.RoutineDeclaration) {
+    inner class BlockExtractor(routine: Syntax.RoutineDefinition) {
         private val iterator = routine.body.iterator()
         private val detectedBlocks = mutableListOf<InstructionBuffer>()
 

@@ -35,18 +35,25 @@ object MessageFormatter {
 
     private fun messageLocation(message: Message): List<String> {
         val range = message.range ?: return emptyList()
+        val filename = range.input.filename()
 
         return try {
+            val indicator =
+                if (filename != null) FILE_INDICATOR_FORMAT.format(Message.quote(filename))
+                else NO_FILE_INDICATOR_FORMAT
+
             val marker = SourceMarker(range)
             listOf(
-                FILE_INDICATOR_FORMAT.format(Message.quote(range.file.path)),
+                indicator,
                 markerLine(message, marker),
                 markerHint(message, marker)
             )
         } catch (unableToReconstructFile: IOException) {
-            listOf(
-                FILE_INDICATOR_UNKNOWN_POSITION_FORMAT.format(Message.quote(range.file.path))
-            )
+            val indicator =
+                if (filename != null) FILE_INDICATOR_UNKNOWN_POSITION_FORMAT.format(Message.quote(filename))
+                else NO_FILE_INDICATOR_UNKNOWN_POSITION_FORMAT
+
+            listOf(indicator)
         }
     }
 
@@ -80,6 +87,8 @@ object MessageFormatter {
     private const val INDICATOR_SEPARATOR = " | "
     private const val FILE_INDICATOR_FORMAT = "In file %s:"
     private const val FILE_INDICATOR_UNKNOWN_POSITION_FORMAT = "At unknown position in file %s:"
+    private const val NO_FILE_INDICATOR_FORMAT = "In input:"
+    private const val NO_FILE_INDICATOR_UNKNOWN_POSITION_FORMAT = "At unknown position in input:"
 
     /**
      * Creates a multiline textual representation of the given [Message].

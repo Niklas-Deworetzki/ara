@@ -1,23 +1,18 @@
 package ara.position
 
-import java.io.File
-import java.io.FileInputStream
-import java.io.InputStreamReader
 import kotlin.math.min
 
 /**
  * Description of [Range] in source code, annotated with the source code line.
  */
 class SourceMarker(range: Range) {
-    private val file: File = range.file
-
     val line: String
     val lineNumber: Int
     val lineOffset: Int
     val length: Int = (range.offsetEnd - range.offsetStart).toInt()
 
     init {
-        LineReader(InputStreamReader(FileInputStream(file))).use { reader ->
+        LineReader(range.input.open()).use { reader ->
             var remainingChars = range.offsetStart
             var lineNumber = 0
             var line = ""

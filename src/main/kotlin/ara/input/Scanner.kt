@@ -162,7 +162,9 @@ class Scanner(private val input: InputSource) : Closeable {
         } while (predicate(currentCharCode))
         revert()
 
-        return createToken(type, buffer.toString())
+        val bufferContents = buffer.toString()
+        if (bufferContents == "routine") return createToken(ROUTINE)
+        return createToken(type, bufferContents)
     }
 
     override fun close() {

@@ -15,6 +15,7 @@ class ScannerTest {
 
     @Test
     fun scannerRecognizesSimpleTokens() {
+        "routine".firstToken().type.shouldBe(Token.Type.ROUTINE)
         ":".firstToken().type.shouldBe(Token.Type.COLON)
         ",".firstToken().type.shouldBe(Token.Type.COMMA)
         ".".firstToken().type.shouldBe(Token.Type.DOT)
@@ -70,7 +71,7 @@ class ScannerTest {
     fun scannerRecognizesSequence() {
         """
             identifier_ending_with_numbers123456789
-            AAAA bbbb A_a
+            AAAA bbbb A_a routine
             0 1 2 3 4 5 6 7 8 9
             // All operators:
             + - ^ * / % == != < <= > >=
@@ -81,6 +82,7 @@ class ScannerTest {
             Token.Type.IDENTIFIER,
             Token.Type.IDENTIFIER,
             Token.Type.IDENTIFIER,
+            Token.Type.ROUTINE,
             Token.Type.INTEGER,
             Token.Type.INTEGER,
             Token.Type.INTEGER,
@@ -119,6 +121,14 @@ class ScannerTest {
     @Test
     fun scannerRecognizesIncompleteTokens() {
         "= !".shouldContainTokensAndEOF(Token.Type.UNKNOWN, Token.Type.UNKNOWN)
+    }
+
+    @Test
+    fun scannerRecognizesIncompleteRoutineKeywordAsIdentifier() {
+        for (length in 1 until ("routine".length - 1)) {
+            val token = "routine".substring(0, length).firstToken().type.shouldBe(Token.Type.IDENTIFIER)
+        }
+
     }
 
     private fun String.shouldContainTokensAndEOF(vararg types: Token.Type) {

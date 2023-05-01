@@ -9,6 +9,7 @@ data class Token(val type: Type, val value: String? = null) {
         IDENTIFIER,
         INTEGER,
 
+        ROUTINE,
         COLON,
         COMMA,
         DOT,

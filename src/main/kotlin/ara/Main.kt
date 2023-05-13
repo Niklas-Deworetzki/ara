@@ -14,22 +14,6 @@ object Main {
     @JvmStatic
     fun main(args: Array<String>) {
         for (path in args) {
-            Scanner(InputSource.fromFile(File(path))).use {
-                do {
-                    val token = it.nextToken()
-                    println(
-                        MessageFormatter.format(
-                            Message(
-                                Ansi.Color.CYAN,
-                                token.type.toString(),
-                                token.range.toString(),
-                                token.range
-                            )
-                        )
-                    )
-                } while (token.type !== Token.Type.EOF)
-            }
-
             println("Processing input file $path")
             if (analyseProgram(path))
                 println("Success!")

@@ -4,6 +4,7 @@ import ara.Direction
 import ara.reporting.Message
 import ara.syntax.Syntax
 import ara.syntax.Syntax.BinaryOperator.*
+import ara.syntax.Syntax.ComparisonOperator.*
 import ara.types.Environment
 import ara.types.Type
 import ara.types.Type.Algebra.Companion.evaluate
@@ -128,8 +129,8 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
         }
 
         private fun checkConditional(conditional: Syntax.Conditional) {
-            val comparisonType = conditional.comparison.computedType()
-            comparisonType.shouldBe(Type.Comparison, conditional.comparison) {
+            val comparisonType = conditional.condition.computedType()
+            comparisonType.shouldBe(Type.Comparison, conditional.condition) {
                 "Expression is not of type ${Type.Comparison} as required by conditional instruction."
             }
         }
@@ -164,22 +165,12 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
             }
         }
 
-        private fun Syntax.ArithmeticExpression.computedType(): Type = when (this) {
-            is Syntax.ArithmeticBinary -> {
+        private fun Syntax.ConditionalExpression.computedType(): Type = when (this) {
+            is Syntax.ComparativeBinary -> {
                 val lhsType = this.lhs.computedType()
                 val rhsType = this.rhs.computedType()
 
-                when (this.operator) {
-                    ADD, SUB, XOR, MUL, DIV, MOD -> {
-                        lhsType.shouldBe(Type.Integer, this.lhs) {
-                            "Operand is not of type ${Type.Integer} as required by arithmetic operator."
-                        }
-                        rhsType.shouldBe(Type.Integer, this.rhs) {
-                            "Operand is not of type ${Type.Integer} as required by arithmetic operator."
-                        }
-                        Type.Integer
-                    }
-
+                when (this.comparator) {
                     LST, LSE, GRT, GRE -> {
                         lhsType.shouldBe(Type.Integer, this.lhs) {
                             "Operand is not of type ${Type.Integer} as required by comparison operator."
@@ -195,6 +186,25 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
                             "Operands are not of the same type as required by equality operator."
                         }
                         Type.Comparison
+                    }
+                }
+            }
+        }
+
+        private fun Syntax.ArithmeticExpression.computedType(): Type = when (this) {
+            is Syntax.ArithmeticBinary -> {
+                val lhsType = this.lhs.computedType()
+                val rhsType = this.rhs.computedType()
+
+                when (this.operator) {
+                    ADD, SUB, XOR, MUL, DIV, MOD -> {
+                        lhsType.shouldBe(Type.Integer, this.lhs) {
+                            "Operand is not of type ${Type.Integer} as required by arithmetic operator."
+                        }
+                        rhsType.shouldBe(Type.Integer, this.rhs) {
+                            "Operand is not of type ${Type.Integer} as required by arithmetic operator."
+                        }
+                        Type.Integer
                     }
                 }
             }
@@ -246,7 +256,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
         reportError(position, message)
     }
 
-    fun Type.isInstantiated(): Boolean = TypeIsInstantiated.evaluate(this)
+    private fun Type.isInstantiated(): Boolean = TypeIsInstantiated.evaluate(this)
 
     private object TypeIsInstantiated : Type.Algebra<Boolean> {
         override fun builtin(builtin: Type.BuiltinType): Boolean = true

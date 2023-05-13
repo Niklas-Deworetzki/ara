@@ -1,8 +1,12 @@
 package ara.analysis
 
+import ara.input.Parser
+import ara.input.Scanner
+import ara.position.InputSource
 import ara.position.Range
 import ara.reporting.Message
 import ara.syntax.Syntax
+import ara.types.Builtins
 import org.fusesource.jansi.Ansi
 
 abstract class Analysis<T> {
@@ -48,5 +52,30 @@ abstract class Analysis<T> {
 
     fun reportError(syntax: Syntax, message: String) =
         reportError(mkErrorMessage(message, syntax.range))
+
+
+    private class ProgramAnalysis(val input: InputSource) : Analysis<Syntax.Program>() {
+        override fun runAnalysis(): Syntax.Program {
+            val program = loadProgram()
+            program.environment = Builtins.environment()
+
+            includeAnalysis(RoutineDefinitionAnalysis(program))
+            includeAnalysis(ControlGraphBuilder(program))
+            includeAnalysis(TypeDefinitionAnalysis(program))
+            includeAnalysis(LocalDeclarationAnalysis(program))
+            includeAnalysis(LocalTypeAnalysis(program))
+            return program
+        }
+
+        private fun loadProgram(): Syntax.Program = Scanner(input).use {
+            includeAnalysis(Parser(it))
+        }
+    }
+
+    companion object {
+
+        fun ofInput(inputSource: InputSource): Analysis<Syntax.Program> =
+            ProgramAnalysis(inputSource)
+    }
 }
 

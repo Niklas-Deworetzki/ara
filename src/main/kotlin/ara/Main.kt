@@ -1,11 +1,12 @@
 package ara
 
-import ara.analysis.*
-import ara.input.Parser
+import ara.analysis.Analysis
 import ara.input.Scanner
+import ara.input.Token
 import ara.position.InputSource
+import ara.reporting.Message
 import ara.reporting.MessageFormatter
-import ara.types.Builtins
+import org.fusesource.jansi.Ansi
 import java.io.File
 
 object Main {
@@ -13,42 +14,40 @@ object Main {
     @JvmStatic
     fun main(args: Array<String>) {
         for (path in args) {
-            try {
-                println("Processing input file $path")
-                analyseProgram(path)
-                println("Success!")
-            } catch (detectedErrors: IllegalStateException) {
-                println(detectedErrors.message)
+            Scanner(InputSource.fromFile(File(path))).use {
+                do {
+                    val token = it.nextToken()
+                    println(
+                        MessageFormatter.format(
+                            Message(
+                                Ansi.Color.CYAN,
+                                token.type.toString(),
+                                token.range.toString(),
+                                token.range
+                            )
+                        )
+                    )
+                } while (token.type !== Token.Type.EOF)
             }
+
+            println("Processing input file $path")
+            if (analyseProgram(path))
+                println("Success!")
         }
     }
 
 
-    private fun analyseProgram(path: String) {
-        val file = File(path)
-        val input = InputSource.fromFile(file)
+    private fun analyseProgram(path: String): Boolean {
+        val input = InputSource.fromFile(File(path))
+        val analysis = Analysis.ofInput(input)
 
-        val program = Scanner(input).use {
-            runAnalysis(Parser(it))
-        }
-
-        program.environment = Builtins.environment()
-
-        runAnalysis(RoutineDefinitionAnalysis(program))
-        runAnalysis(ControlGraphBuilder(program))
-        runAnalysis(TypeDefinitionAnalysis(program))
-        runAnalysis(LocalDeclarationAnalysis(program))
-        runAnalysis(LocalTypeAnalysis(program))
-    }
-
-    private fun <T> runAnalysis(analysis: Analysis<T>): T {
-        val result = analysis.runAnalysis()
+        analysis.runAnalysis()
         if (analysis.hasReportedErrors) {
             analysis.reportedErrors
                 .map(MessageFormatter::format)
                 .forEach(::println)
-            throw IllegalStateException("Encountered errors during analysis.")
+            return false
         }
-        return result
+        return true
     }
 }

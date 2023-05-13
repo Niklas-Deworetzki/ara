@@ -16,8 +16,8 @@ class Scanner(private val input: InputSource) : Closeable {
     private val currentChar: Char
         get() = currentCharCode.toChar()
 
-    private var startOfCurrentToken: Long = 0L
-    private var currentOffset: Long = 0L
+    private var startOfCurrentToken: Long = -1L
+    private var currentOffset: Long = -1L
 
     private fun advance() {
         currentOffset++
@@ -29,7 +29,7 @@ class Scanner(private val input: InputSource) : Closeable {
     }
 
     private fun revert(vararg additionalChars: Char) {
-        currentOffset--
+        currentOffset -= additionalChars.size + 1
         buffer.push(currentCharCode)
         for (char in additionalChars.reversed()) {
             buffer.push(char.code)
@@ -38,7 +38,7 @@ class Scanner(private val input: InputSource) : Closeable {
 
     private fun createToken(type: Token.Type, value: String? = null): Token {
         val token = Token(type, value)
-        token.range = Range(input, startOfCurrentToken, currentOffset)
+        token.range = Range(input, startOfCurrentToken, currentOffset + 1)
         return token
     }
 
@@ -65,17 +65,14 @@ class Scanner(private val input: InputSource) : Closeable {
 
     private fun consumeWhitespace(): Boolean {
         val startOffset = currentOffset
-        do {
+        while (Character.isWhitespace(currentCharCode)) {
             advance()
-        } while (Character.isWhitespace(currentCharCode))
-        revert()
+        }
         return currentOffset > startOffset
     }
 
     private fun consumeComment(): Boolean {
-        advance()
         if (currentCharCode != '/'.code) {
-            revert()
             return false
         }
 
@@ -92,12 +89,12 @@ class Scanner(private val input: InputSource) : Closeable {
     }
 
     fun nextToken(): Token {
+        advance()
         while (consumeComment() or consumeWhitespace()) {
             // Repeat until nothing is left to consume.
         }
 
         startOfCurrentToken = currentOffset
-        advance()
         if (currentCharCode == END_OF_FILE) return createToken(EOF)
 
         val simpleType = SIMPLE_TOKEN_TYPES[currentChar]

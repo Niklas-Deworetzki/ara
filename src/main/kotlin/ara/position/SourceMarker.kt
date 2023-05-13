@@ -21,7 +21,7 @@ class SourceMarker(range: Range) {
                 remainingChars -= line.length
                 lineNumber++
                 line = reader.readLine()
-            } while (remainingChars > line.length)
+            } while (remainingChars >= line.length)
 
             this.line = line.dropLastWhile { Character.isWhitespace(it) }
             this.lineOffset = remainingChars.toInt().coerceAtMost(this.line.length)

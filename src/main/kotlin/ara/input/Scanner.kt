@@ -165,6 +165,8 @@ class Scanner(private val input: InputSource) : Closeable {
         return when (val bufferContents = buffer.toString()) {
             "routine" -> createToken(ROUTINE)
             "type" -> createToken(TYPE)
+            "call" -> createToken(CALL)
+            "uncall" -> createToken(UNCALL)
             else -> createToken(type, bufferContents)
         }
     }

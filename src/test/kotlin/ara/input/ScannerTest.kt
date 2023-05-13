@@ -71,18 +71,21 @@ class ScannerTest {
     fun scannerRecognizesSequence() {
         """
             identifier_ending_with_numbers123456789
-            AAAA bbbb A_a routine
+            AAAA bbbb A_a routine type call uncall
             0 1 2 3 4 5 6 7 8 9
             // All operators:
             + - ^ * / % == != < <= > >=
             // Arrows and remaining stuff
-            <- -> ( ) { } : , . :=
+            <- -> ( ) { } : , . := =
         """.shouldContainTokensAndEOF(
             Token.Type.IDENTIFIER,
             Token.Type.IDENTIFIER,
             Token.Type.IDENTIFIER,
             Token.Type.IDENTIFIER,
             Token.Type.ROUTINE,
+            Token.Type.TYPE,
+            Token.Type.CALL,
+            Token.Type.UNCALL,
             Token.Type.INTEGER,
             Token.Type.INTEGER,
             Token.Type.INTEGER,
@@ -114,21 +117,26 @@ class ScannerTest {
             Token.Type.COLON,
             Token.Type.COMMA,
             Token.Type.DOT,
-            Token.Type.ASSIGNMENT
+            Token.Type.ASSIGNMENT,
+            Token.Type.EQ
         )
     }
 
     @Test
     fun scannerRecognizesIncompleteTokens() {
-        "= !".shouldContainTokensAndEOF(Token.Type.UNKNOWN, Token.Type.UNKNOWN)
+        "!".shouldContainTokensAndEOF(Token.Type.UNKNOWN)
     }
 
     @Test
     fun scannerRecognizesIncompleteRoutineKeywordAsIdentifier() {
-        for (length in 1 until ("routine".length - 1)) {
-            val token = "routine".substring(0, length).firstToken().type.shouldBe(Token.Type.IDENTIFIER)
-        }
+        val keywords = listOf("routine", "type", "call", "uncall")
 
+        for (keyword in keywords) {
+            for (length in 1 until keyword.length - 1) {
+                keyword.substring(0, length).firstToken().type
+                    .shouldBe(Token.Type.IDENTIFIER)
+            }
+        }
     }
 
     private fun String.shouldContainTokensAndEOF(vararg types: Token.Type) {

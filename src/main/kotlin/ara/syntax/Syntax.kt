@@ -7,7 +7,7 @@ import ara.reporting.Message
 import ara.types.Environment
 
 sealed class Syntax {
-    var range: Range? = null
+    lateinit var range: Range
 
     data class Identifier(val name: String) : Syntax() {
         override fun toString(): String = Message.quote(name)
@@ -91,7 +91,7 @@ sealed class Syntax {
         override val direction: Direction,
         val lhsLabel: Identifier,
         val rhsLabel: Identifier,
-        val comparison: ArithmeticExpression
+        val condition: ConditionalExpression
     ) : Instruction(), Control {
         override fun labels(): Collection<Identifier> = listOf(lhsLabel, rhsLabel)
     }
@@ -138,7 +138,7 @@ sealed class Syntax {
 //    data class AllocationExpression(
 //        val direction: Direction,
 //        val type: Type
-//    ) : Expression()
+//    ) : ResourceExpression()
 //
 //    /**
 //     * An expression used to access in-memory values.
@@ -148,23 +148,12 @@ sealed class Syntax {
 //     */
 //    data class ReferenceExpression(
 //        val storage: Storage
-//    ) : Expression()
+//    ) : ResourceExpression()
 
     /**
      * A storage is some modifiable value (e.g. local on the stack frame or in global memory).
      */
     sealed class Storage : ResourceExpression()
-
-    /**
-     * Associates a variable with a type.
-     * ```
-     *  x : Type
-     * ```
-     */
-    data class TypedStorage(
-        val storage: Storage,
-        val type: Type
-    ) : Storage()
 
     /**
      * A simple variable without type annotation.
@@ -175,6 +164,17 @@ sealed class Syntax {
      */
     data class NamedStorage(
         val name: Identifier
+    ) : Storage()
+
+    /**
+     * Associates a variable with a type.
+     * ```
+     *  x : Type
+     * ```
+     */
+    data class TypedStorage(
+        val storage: Storage,
+        val type: Type
     ) : Storage()
 
     /**
@@ -205,7 +205,7 @@ sealed class Syntax {
 
 
     /**
-     * An evaluable expression that neither initializes nor finalizes some storage.
+     * An evaluable expression that neither initializes nor finalizes storage.
      */
     sealed class ArithmeticExpression : Syntax()
 
@@ -226,9 +226,26 @@ sealed class Syntax {
     ) : ArithmeticExpression()
 
     enum class BinaryOperator {
-        ADD, SUB, XOR, MUL, DIV, MOD, EQU, NEQ, LST, LSE, GRT, GRE
+        ADD, SUB, XOR, MUL, DIV, MOD
     }
 
+    /**
+     * An evaluable expression that neither initializes nor finalizes storage.
+     */
+    sealed class ConditionalExpression : Syntax()
+
+    /**
+     * A binary comparison.
+     */
+    data class ComparativeBinary(
+        val lhs: ResourceExpression,
+        val comparator: ComparisonOperator,
+        val rhs: ResourceExpression
+    ) : ConditionalExpression()
+
+    enum class ComparisonOperator {
+        EQU, NEQ, LST, LSE, GRT, GRE
+    }
 
     /**
      * An expression representing a type.

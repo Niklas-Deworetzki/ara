@@ -10,9 +10,13 @@ data class Token(val type: Type, val value: String? = null) {
         INTEGER,
 
         ROUTINE,
+        TYPE,
+        CALL,
+        UNCALL,
         COLON,
         COMMA,
         DOT,
+        EQ,
         ASSIGNMENT,
 
         OPERATOR_ADD,

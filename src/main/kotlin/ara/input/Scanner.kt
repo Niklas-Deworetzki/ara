@@ -24,15 +24,15 @@ class Scanner(private val input: InputSource) : Closeable {
         if (buffer.isEmpty()) {
             currentCharCode = reader.read()
         } else {
-            currentCharCode = buffer.removeFirst()
+            currentCharCode = buffer.pop()
         }
     }
 
     private fun revert(vararg additionalChars: Char) {
         currentOffset--
-        buffer.offerFirst(currentCharCode)
+        buffer.push(currentCharCode)
         for (char in additionalChars.reversed()) {
-            buffer.offerFirst(char.code)
+            buffer.push(char.code)
         }
     }
 
@@ -117,7 +117,7 @@ class Scanner(private val input: InputSource) : Closeable {
                 parseContinuousToken(OPERATOR_GRT, '=' to OPERATOR_GRE)
 
             '=' ->
-                parseContinuousToken(UNKNOWN, '=' to OPERATOR_EQU)
+                parseContinuousToken(EQ, '=' to OPERATOR_EQU)
 
             '!' ->
                 parseContinuousToken(UNKNOWN, '=' to OPERATOR_NEQ)
@@ -162,9 +162,11 @@ class Scanner(private val input: InputSource) : Closeable {
         } while (predicate(currentCharCode))
         revert()
 
-        val bufferContents = buffer.toString()
-        if (bufferContents == "routine") return createToken(ROUTINE)
-        return createToken(type, bufferContents)
+        return when (val bufferContents = buffer.toString()) {
+            "routine" -> createToken(ROUTINE)
+            "type" -> createToken(TYPE)
+            else -> createToken(type, bufferContents)
+        }
     }
 
     override fun close() {

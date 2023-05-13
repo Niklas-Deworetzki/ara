@@ -25,7 +25,7 @@ object TypeUnification {
                 return Error.DifferentStructSize(a.members, b.members)
 
             val maxIndex = a.members.size
-            for (i in 0..maxIndex) {
+            for (i in 0 until maxIndex) {
                 val aMember = a.members[i]
                 val bMember = b.members[i]
 

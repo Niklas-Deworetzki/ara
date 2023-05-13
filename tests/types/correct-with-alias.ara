@@ -1,0 +1,6 @@
+// Success
+
+type A = Int
+
+routine f(a: A) -> (a: Int) {
+}

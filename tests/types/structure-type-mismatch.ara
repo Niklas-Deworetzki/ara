@@ -1,0 +1,12 @@
+// Error: Structure type members #1 `a' differ.
+
+type Foo1 = {
+    a: { }
+}
+
+type Foo2 = {
+    a: Int
+}
+
+routine f(a: Foo1) -> (a: Foo2) {
+}

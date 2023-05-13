@@ -1,0 +1,14 @@
+// Success
+
+type A = Int
+
+type Foo1 = {
+    a: A
+}
+
+type Foo2 = {
+    a: Int
+}
+
+routine f(a: Foo1) -> (a: Foo2) {
+}

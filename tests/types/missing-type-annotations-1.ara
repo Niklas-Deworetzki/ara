@@ -1,0 +1,4 @@
+// Error: Type of variable `a' cannot be inferred. Perhaps some type annotations are missing?
+
+routine f(a) -> (b: Int) {
+}

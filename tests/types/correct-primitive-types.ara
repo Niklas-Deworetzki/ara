@@ -1,0 +1,4 @@
+// Success
+
+routine f(a: Int) -> (a: Int) {
+}

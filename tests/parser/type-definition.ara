@@ -1,0 +1,8 @@
+// Success
+
+type T = Int
+
+type Struct = {
+    a: Int,
+    b: Int
+}

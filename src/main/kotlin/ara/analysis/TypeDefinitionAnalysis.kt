@@ -37,10 +37,10 @@ class TypeDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Uni
                     Unit
 
                 is TypeUnification.Error.RecursiveType ->
-                    reportError(definition, "Unable to construct infinite type ${definition.name}.")
+                    reportError(definition.name, "Unable to construct infinite type ${definition.name}.")
 
                 else ->
-                    reportError(definition, "Unable declare type ${definition.name}.")
+                    reportError(definition.name, "Unable declare type ${definition.name}.")
             }
         }
     }

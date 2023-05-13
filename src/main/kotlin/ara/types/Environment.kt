@@ -26,6 +26,10 @@ class Environment(val outer: Environment? = null) {
         return routineMap.putIfAbsent(definition.name, definition) == null
     }
 
+    fun defineType(name: Syntax.Identifier, type: Type): Boolean {
+        return typeMap.putIfAbsent(name, type) == null
+    }
+
     fun declareType(name: Syntax.Identifier): Boolean {
         return typeMap.putIfAbsent(name, Type.Variable()) == null
     }

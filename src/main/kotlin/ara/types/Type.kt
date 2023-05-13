@@ -1,5 +1,7 @@
 package ara.types
 
+import ara.types.Type.Algebra.Companion.evaluate
+
 sealed class Type {
     data class Variable(var type: Type? = null) : Type() {
         inline fun <T> fold(zero: () -> T, function: (Type) -> T): T = when (val containedType = type) {
@@ -22,7 +24,7 @@ sealed class Type {
     }
 
 
-    abstract class BuiltinType : Type()
+    sealed class BuiltinType : Type()
 
     object Integer : BuiltinType()
 
@@ -68,5 +70,20 @@ sealed class Type {
                     }
             }
         }
+    }
+
+    final override fun toString(): String = Show.evaluate(this)
+
+    private object Show : Algebra<String> {
+        override fun builtin(builtin: BuiltinType): String = when (builtin) {
+            Comparison -> "Comparison"
+            Integer -> "Int"
+        }
+
+        override fun structure(memberNames: List<String>, memberValues: List<String>): String =
+            memberNames.zip(memberValues)
+                .joinToString(prefix = "{", separator = ",", postfix = "}") { (name, value) -> "$name: $value" }
+
+        override fun uninitializedVariable(): String = "⊥"
     }
 }

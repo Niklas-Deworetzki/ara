@@ -60,7 +60,7 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
 
     private fun parseProgram(): Syntax.Program {
         val definitions = mutableListOf<Syntax.Definition>()
-        while (!isNextToken(EOF)) {
+        while (lookahead.type !== EOF) {
             try {
                 definitions.add(parseGlobalDefinition())
             } catch (syntaxError: RecoverableSyntaxError) {
@@ -88,7 +88,7 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
 
     private fun parseParameterList(): List<Syntax.Parameter> {
         nextTokenShouldBe(PAREN_L, "start of parameter list")
-        if (isNextToken(PAREN_R)) {
+        if (lookahead.type === PAREN_R) {
             next()
             return emptyList()
         }
@@ -115,7 +115,7 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
     private fun parseParameter(): Syntax.Parameter = parse {
         val name = parseIdentifier()
         var type: Syntax.Type? = null
-        if (isNextToken(COLON)) {
+        if (lookahead.type === COLON) {
             next()
             type = parseType()
         }
@@ -126,7 +126,7 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
         nextTokenShouldBe(CURL_L, "start of routine body")
         val instructions = mutableListOf<Syntax.Instruction>()
         try {
-            while (!isNextToken(CURL_R)) {
+            while (lookahead.type !== CURL_R) {
                 instructions.add(parseInstruction())
             }
         } catch (syntaxError: RecoverableSyntaxError) {
@@ -152,7 +152,7 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
 
     private fun parseStructureType(): Syntax.StructureType = parse {
         nextTokenShouldBe(CURL_L, "start of structure type")
-        if (isNextToken(CURL_R)) {
+        if (lookahead.type === CURL_R) {
             next()
             Syntax.StructureType(emptyList())
         } else {
@@ -197,12 +197,12 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
     private fun parseAssignmentOrEntry(): Syntax.Instruction = parse {
         val dst = parseResourceExpression()
         when {
-            dst is Syntax.NamedStorage && isNextToken(ARROW_L) -> { // Unconditional entry
+            dst is Syntax.NamedStorage && lookahead.type === ARROW_L -> { // Unconditional entry
                 next()
                 Syntax.Unconditional(Direction.BACKWARD, dst.name)
             }
 
-            dst is Syntax.NamedStorage && isNextToken(COMMA) -> { // Conditional entry
+            dst is Syntax.NamedStorage && lookahead.type === COMMA -> { // Conditional entry
                 next()
                 val additionalLabel = parseIdentifier()
                 nextTokenShouldBe(ARROW_L, "arrow from conditional entry point")
@@ -210,7 +210,7 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
                 Syntax.Conditional(Direction.BACKWARD, dst.name, additionalLabel, condition)
             }
 
-            isNextToken(ASSIGNMENT) -> { // Assignment
+            lookahead.type === ASSIGNMENT -> { // Assignment
                 next()
                 val src = parseResourceExpression()
                 val modifier = parseOptionalArithmeticModifier()
@@ -255,7 +255,7 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
 
             else -> {
                 val arguments = mutableListOf(firstValue)
-                while (!isNextToken(PAREN_R)) {
+                while (lookahead.type !== PAREN_R) {
                     nextTokenShouldBe(COMMA, "another argument or end of argument list")
                     arguments.add(parseResourceExpression())
                 }
@@ -273,7 +273,7 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
 
     private fun parseArgumentList(): List<Syntax.ResourceExpression> {
         nextTokenShouldBe(PAREN_L, "start of argument list")
-        if (isNextToken(PAREN_R)) {
+        if (lookahead.type === PAREN_R) {
             next()
             return emptyList()
         }
@@ -318,9 +318,17 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
     }
 
     private fun parseIntegerLiteral(): Syntax.IntegerLiteral = parse {
-        val isNegative = isNextToken(OPERATOR_SUB)
+        val isNegative = parseOptionalNegativeSign()
         val literal = nextTokenShouldBe(INTEGER, "integer literal")?.toIntOrNull() ?: syntaxError("valid integer literal")
         Syntax.IntegerLiteral(if (isNegative) -literal else literal)
+    }
+
+    private fun parseOptionalNegativeSign(): Boolean {
+        if (lookahead.type === OPERATOR_SUB) {
+            next()
+            return true
+        }
+        return false
     }
 
     private fun parseStorage(): Syntax.Storage {
@@ -389,19 +397,11 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
 
 
     private fun nextTokenShouldBe(expectedType: Token.Type, message: String): String? {
-        if (isNextToken(expectedType)) {
+        if (lookahead.type !== expectedType) {
             syntaxError(message)
         }
         next()
         return currentToken.value
-    }
-
-    private fun isNextToken(type: Token.Type): Boolean {
-        if (lookahead.type === type) {
-            next()
-            return true
-        }
-        return false
     }
 
     private fun consumeUntil(vararg types: Token.Type) {

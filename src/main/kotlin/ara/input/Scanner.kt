@@ -17,7 +17,7 @@ class Scanner(private val input: InputSource) : Closeable {
         get() = currentCharCode.toChar()
 
     private var startOfCurrentToken: Long = 0L
-    private var currentOffset: Long = -1L
+    private var currentOffset: Long = 0L
 
     private fun advance() {
         currentOffset++

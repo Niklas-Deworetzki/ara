@@ -22,6 +22,8 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
 
             val parameterNames = (it.inputParameters + it.outputParameters).map { parameter -> parameter.name }.toSet()
             ensureVariablesHaveInstantiatedTypes(it.localEnvironment, parameterNames)
+            it.inputParameterTypes = it.inputParameters.map { parameter -> it.localEnvironment.getVariable(parameter.name)!! }
+            it.outputParameterTypes = it.outputParameters.map { parameter -> it.localEnvironment.getVariable(parameter.name)!! }
         }
         proceedAnalysis { // We can't proceed if there are not inferred types in parameter lists, as they would be instantiated on calls which could cause hard-to-locate errors.
             definedRoutines.forEach {
@@ -236,12 +238,12 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
                 is TypeUnification.Error.DifferentMemberNames -> {
                     val aMemberName = Message.quote(currentTypeError.aMember.name)
                     val bMemberName = Message.quote(currentTypeError.bMember.name)
-                    messageHints.add("Structure types with different members at #${currentTypeError.index} (members $aMemberName and $bMemberName).")
+                    messageHints.add("Structure type members #${currentTypeError.index + 1} $aMemberName and $bMemberName differ.")
                 }
 
                 is TypeUnification.Error.DifferentMemberTypes -> {
                     val memberName = Message.quote(currentTypeError.aMember.name)
-                    messageHints.add("Structure types with different members at #${currentTypeError.index} (member $memberName).")
+                    messageHints.add("Structure type members #${currentTypeError.index + 1} $memberName differ.")
                     currentTypeError = currentTypeError.cause
                     foundCause = true
                 }
@@ -251,7 +253,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
             }
         } while (foundCause)
         val message = messageHints.reduce { a, b ->
-            "$a${System.lineSeparator()} caused by: $b"
+            "$a${System.lineSeparator()} cause: $b"
         }
         reportError(position, message)
     }

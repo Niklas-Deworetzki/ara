@@ -14,17 +14,17 @@ sealed class StorageDescriptor<V> {
         StorageDescriptor<V>()
 
 
-    private fun findNode(path: List<String>): StorageDescriptor<V> {
+    private fun findNode(path: ResourcePath): StorageDescriptor<V> {
         var currentDescriptor = this
 
         for (index in path.indices) {
             when (currentDescriptor) {
                 is CompoundDescriptor ->
                     currentDescriptor = currentDescriptor.data[path[index]]
-                        ?: throw NoSuchElementException("No key '${path.subList(0, 1 + index)}' in tree.")
+                        ?: throw NoSuchElementException("No key '${path.subPath(index)}' in tree.")
 
                 is PrimitiveDescriptor ->
-                    throw NoSuchElementException("No key '${path.subList(0, 1 + index)}' in tree.")
+                    throw NoSuchElementException("No key '${path.subPath(index)}' in tree.")
             }
         }
         return currentDescriptor
@@ -40,14 +40,17 @@ sealed class StorageDescriptor<V> {
             }
     }
 
-    operator fun set(vararg path: String, value: V) =
-        findNode(path.toList()).recursiveSetValue(value)
+    operator fun set(vararg path: String, value: V): Unit =
+        set(ResourcePath.of(*path), value)
 
-    operator fun set(path: List<String>, value: V) =
-        findNode(path.toList()).recursiveSetValue(value)
+    operator fun set(path: ResourcePath, value: V): Unit =
+        findNode(path).recursiveSetValue(value)
 
     operator fun get(vararg path: String): StorageDescriptor<V> =
-        findNode(path.toList())
+        findNode(ResourcePath.of(*path))
+
+    operator fun get(path: ResourcePath): StorageDescriptor<V> =
+        findNode(path)
 
     fun copy(): StorageDescriptor<V> = when (this) {
         is CompoundDescriptor -> {

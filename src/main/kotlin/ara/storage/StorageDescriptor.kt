@@ -4,118 +4,122 @@ import ara.types.Environment
 import ara.types.Type
 import ara.types.Type.Algebra.Companion.evaluate
 import ara.utils.Collections.zipToMap
-import java.lang.IllegalArgumentException
 
-sealed class StorageDescriptor<V> {
-    private class PrimitiveDescriptor<V>(var data: V) :
-        StorageDescriptor<V>()
+/**
+ * A tree-like lookup-map that provides read and write access to nodes by providing a path.
+ * All possible paths must be defined during creation.
+ *
+ * This abstract implementation provides read and write access for all paths to leaf nodes.
+ * Concrete subclasses can choose to provide read and write access for synthetic attributes
+ * (i.e. for paths describing non-leaf nodes) as well.
+ */
+abstract class StorageDescriptor<V>
+protected constructor(private val root: DescriptorNode<V>) {
 
-    private class CompoundDescriptor<V>(val data: MutableMap<String, StorageDescriptor<V>>) :
-        StorageDescriptor<V>()
-
-
-    private fun findNode(path: ResourcePath): StorageDescriptor<V> {
-        var currentDescriptor = this
-
-        for (index in path.indices) {
-            when (currentDescriptor) {
-                is CompoundDescriptor ->
-                    currentDescriptor = currentDescriptor.data[path[index]]
-                        ?: throw NoSuchElementException("No key '${path.subPath(index)}' in tree.")
-
-                is PrimitiveDescriptor ->
-                    throw NoSuchElementException("No key '${path.subPath(index)}' in tree.")
-            }
-        }
-        return currentDescriptor
+    protected sealed interface DescriptorNode<V> {
+        fun copy(): DescriptorNode<V>
     }
 
-    private fun recursiveSetValue(value: V): Unit = when (this) {
-        is PrimitiveDescriptor ->
-            this.data = value
-
-        is CompoundDescriptor ->
-            this.data.values.forEach {
-                it.recursiveSetValue(value)
-            }
+    protected class LeafNode<V>(var data: V) : DescriptorNode<V> {
+        override fun copy(): DescriptorNode<V> =
+            LeafNode(data)
     }
 
-    operator fun set(vararg path: String, value: V): Unit =
-        set(ResourcePath.of(*path), value)
-
-    operator fun set(path: ResourcePath, value: V): Unit =
-        findNode(path).recursiveSetValue(value)
-
-    operator fun get(vararg path: String): StorageDescriptor<V> =
-        findNode(ResourcePath.of(*path))
-
-    operator fun get(path: ResourcePath): StorageDescriptor<V> =
-        findNode(path)
-
-    fun copy(): StorageDescriptor<V> = when (this) {
-        is CompoundDescriptor -> {
-            val copiedData = mutableMapOf<String, StorageDescriptor<V>>()
+    protected class InnerNode<V>(val data: MutableMap<String, DescriptorNode<V>>) : DescriptorNode<V> {
+        override fun copy(): DescriptorNode<V> {
+            val copiedData = mutableMapOf<String, DescriptorNode<V>>()
             for ((key, value) in this.data)
                 copiedData[key] = value.copy()
-            CompoundDescriptor(copiedData)
+            return InnerNode(copiedData)
+        }
+    }
+
+    private fun findNode(path: ResourcePath): DescriptorNode<V> {
+        var currentNode = root
+        for (index in path.indices) {
+            when (currentNode) {
+                is InnerNode ->
+                    currentNode = currentNode.data[path[index]]
+                        ?: throw NoSuchElementException("No key '${path.subPath(index)}' in descriptor tree.")
+
+                is LeafNode ->
+                    throw NoSuchElementException("No key '${path.subPath(index)}' in descriptor tree.")
+            }
+        }
+        return currentNode
+    }
+
+    operator fun set(path: ResourcePath, value: V): Unit =
+        when (val target = findNode(path)) {
+            is LeafNode ->
+                target.data = value
+
+            else ->
+                setSyntheticValue(target, value)
         }
 
-        is PrimitiveDescriptor ->
-            PrimitiveDescriptor(this.data)
+    operator fun get(path: ResourcePath): V =
+        when (val target = findNode(path)) {
+            is LeafNode ->
+                target.data
+
+            else ->
+                getSyntheticValue(target)
+        }
+
+    protected abstract fun setSyntheticValue(node: DescriptorNode<V>, value: V)
+    protected abstract fun getSyntheticValue(node: DescriptorNode<V>): V
+
+    protected open fun formatValue(value: V): String =
+        "$value"
+
+    private fun recursiveToString(node: DescriptorNode<V>): List<String> = when (node) {
+        is LeafNode ->
+            listOf(formatValue(node.data))
+
+        is InnerNode -> {
+            val lineBuffer = mutableListOf<String>()
+            for (key in node.data.keys.sorted()) {
+                lineBuffer.add(key)
+
+                val formattedValue = recursiveToString(node.data[key]!!)
+
+                val firstLine = formattedValue.first()
+                lineBuffer.add("├$firstLine")
+                for (remainingLine in formattedValue.drop(1)) {
+                    lineBuffer.add("│$remainingLine")
+                }
+            }
+            lineBuffer
+        }
     }
 
-    fun <R> evaluate(converter: (V) -> R, combinator: (Collection<R>) -> R): R = when (this) {
-        is PrimitiveDescriptor ->
-            converter(this.data)
+    override fun toString(): String =
+        recursiveToString(root).joinToString(separator = System.lineSeparator())
 
-        is CompoundDescriptor ->
-            combinator(this.data.values.map { it.evaluate(converter, combinator) })
-    }
-
-    companion object {
-        fun <V> fromEnvironment(environment: Environment, defaultValue: V): StorageDescriptor<V> {
+    protected companion object {
+        fun <V> fromEnvironment(environment: Environment, defaultValue: V): InnerNode<V> {
             val algebra = DescriptorConstructionAlgebra(defaultValue)
 
-            val descriptors = mutableMapOf<String, StorageDescriptor<V>>()
+            val descriptors = mutableMapOf<String, DescriptorNode<V>>()
             for ((name, type) in environment.variables) {
                 descriptors[name.name] = algebra.evaluate(type)
             }
-            return CompoundDescriptor(descriptors)
+            return InnerNode(descriptors)
         }
 
-        private class DescriptorConstructionAlgebra<V>(val defaultValue: V) : Type.Algebra<StorageDescriptor<V>> {
-            override fun builtin(builtin: Type.BuiltinType): StorageDescriptor<V> =
-                PrimitiveDescriptor(defaultValue)
+        private class DescriptorConstructionAlgebra<V>(val defaultValue: V) : Type.Algebra<DescriptorNode<V>> {
+            override fun builtin(builtin: Type.BuiltinType): DescriptorNode<V> =
+                LeafNode(defaultValue)
 
             override fun structure(
                 memberNames: List<String>,
-                memberValues: List<StorageDescriptor<V>>
-            ): StorageDescriptor<V> =
-                CompoundDescriptor(zipToMap(memberNames, memberValues))
+                memberValues: List<DescriptorNode<V>>
+            ): DescriptorNode<V> =
+                InnerNode(zipToMap(memberNames, memberValues))
 
-            override fun uninitializedVariable(): StorageDescriptor<V> =
-                PrimitiveDescriptor(defaultValue)
-        }
-
-
-        fun <L, R, V> combine(
-            l: StorageDescriptor<L>,
-            r: StorageDescriptor<R>,
-            combinator: (L, R) -> V
-        ): StorageDescriptor<V> = when {
-            l is CompoundDescriptor && r is CompoundDescriptor -> {
-                val resultData = mutableMapOf<String, StorageDescriptor<V>>()
-                for (key in (l.data.keys intersect r.data.keys)) {
-                    resultData[key] = combine(l.data[key]!!, r.data[key]!!, combinator)
-                }
-                CompoundDescriptor(resultData)
-            }
-
-            l is PrimitiveDescriptor && r is PrimitiveDescriptor ->
-                PrimitiveDescriptor(combinator(l.data, r.data))
-
-            else ->
-                throw IllegalArgumentException("Different tree structure.")
+            override fun uninitializedVariable(): DescriptorNode<V> =
+                LeafNode(defaultValue)
         }
     }
 }

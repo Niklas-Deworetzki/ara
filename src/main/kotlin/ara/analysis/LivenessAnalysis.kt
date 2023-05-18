@@ -2,6 +2,7 @@ package ara.analysis
 
 import ara.Direction
 import ara.analysis.dataflow.DataflowProblem
+import ara.analysis.live.LivenessDescriptor
 import ara.control.Block
 import ara.storage.ResourceAllocation.variablesCreated
 import ara.storage.ResourceAllocation.variablesDestroyed
@@ -11,6 +12,53 @@ import ara.syntax.Syntax
 
 class LivenessAnalysis(val program: Syntax.Program) {
 
+
+    data class LivenessRequirements(
+        val requiredIn: LivenessDescriptor,
+        val requiredOut: LivenessDescriptor
+    )
+
+    fun computeLivenessChangesInBlocks(routine: Syntax.RoutineDefinition): Map<Block, LivenessRequirements> {
+        val result = mutableMapOf<Block, LivenessRequirements>()
+
+        for (block in routine.graph) {
+            val data: StorageDescriptor<Boolean?> =
+                StorageDescriptor.fromEnvironment(routine.localEnvironment, null)
+
+            result[block] = computeLivenessChangesInBlock(block, data)
+        }
+
+        return result
+    }
+
+    private fun computeLivenessChangesInBlock(routine: Syntax.RoutineDefinition, block: Block): LivenessRequirements {
+        val currentlyLive = LivenessDescriptor(routine)
+        val requiredLiveBefore = LivenessDescriptor(routine)
+
+        for (instruction in block) {
+            for (destroyedVariable in instruction.variablesDestroyed()) {
+                when (currentlyLive[destroyedVariable]) {
+                    true ->
+                        currentlyLive[destroyedVariable] = false
+
+                    false ->
+                        requiredLiveBefore[destroyedVariable] = true
+
+
+                }
+
+
+            }
+
+            val destroyedVariables = instruction.variablesDestroyed()
+            requiredLiveBefore += destroyedVariables
+                .filter { currentlyLive[it] == null }
+            currentlyLive -= destroyedVariables
+
+            val createdVariables = instruction.variablesCreated()
+        }
+
+    }
 
     private class LivenessProblem(val routine: Syntax.RoutineDefinition, direction: Direction) :
         DataflowProblem<Block, StorageDescriptor<Boolean>>(

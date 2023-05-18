@@ -1,8 +1,12 @@
 package ara.storage
 
+import ara.position.Range
 import ara.syntax.Syntax
 
 interface ResourcePath {
+
+    val definition: Range?
+        get() = TODO()
 
     val indices: Iterable<Int>
         get() = TODO()

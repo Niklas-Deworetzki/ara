@@ -1,12 +1,8 @@
 package ara.storage
 
-import ara.position.Range
 import ara.syntax.Syntax
 
 interface ResourcePath {
-
-    val definition: Range?
-        get() = TODO()
 
     val indices: Iterable<Int>
         get() = TODO()
@@ -15,11 +11,13 @@ interface ResourcePath {
 
     fun subPath(indexIncluded: Int): ResourcePath = TODO()
 
-    fun appended(accessor: Syntax.Identifier): ResourcePath = TODO()
+    fun appended(accessor: String): ResourcePath = TODO()
 
     companion object {
-        fun localRoot(name: Syntax.Identifier): ResourcePath = TODO()
+        fun localRoot(name: String): ResourcePath = TODO()
 
-        fun of(vararg components: String): ResourcePath = TODO()
+        fun of(segments: Iterable<String>): ResourcePath = TODO()
+
+        fun ofIdentifier(name: Syntax.Identifier): ResourcePath = TODO()
     }
 }

@@ -4,6 +4,8 @@ import ara.types.Environment
 import ara.types.Type
 import ara.types.Type.Algebra.Companion.evaluate
 import ara.utils.Collections.zipToMap
+import java.util.Deque
+import java.util.LinkedList
 
 /**
  * A tree-like lookup-map that provides read and write access to nodes by providing a path.
@@ -14,7 +16,7 @@ import ara.utils.Collections.zipToMap
  * (i.e. for paths describing non-leaf nodes) as well.
  */
 abstract class StorageDescriptor<V>
-protected constructor(private val root: DescriptorNode<V>) {
+protected constructor(protected val root: DescriptorNode<V>) {
 
     protected sealed interface DescriptorNode<V> {
         fun copy(): DescriptorNode<V>
@@ -25,7 +27,12 @@ protected constructor(private val root: DescriptorNode<V>) {
             LeafNode(data)
     }
 
-    protected class InnerNode<V>(val data: MutableMap<String, DescriptorNode<V>>) : DescriptorNode<V> {
+    protected class InnerNode<V>(val data: MutableMap<String, DescriptorNode<V>>) :
+        DescriptorNode<V>, Iterable<DescriptorNode<V>> {
+
+        override fun iterator(): Iterator<DescriptorNode<V>> =
+            this.data.values.iterator()
+
         override fun copy(): DescriptorNode<V> {
             val copiedData = mutableMapOf<String, DescriptorNode<V>>()
             for ((key, value) in this.data)
@@ -33,6 +40,15 @@ protected constructor(private val root: DescriptorNode<V>) {
             return InnerNode(copiedData)
         }
     }
+
+    val keys: Set<ResourcePath>
+        get() = when (root) {
+            is LeafNode ->
+                emptySet()
+
+            is InnerNode ->
+                collectKeys(root).map(ResourcePath::of).toSet()
+        }
 
     private fun findNode(path: ResourcePath): DescriptorNode<V> {
         var currentNode = root
@@ -50,25 +66,13 @@ protected constructor(private val root: DescriptorNode<V>) {
     }
 
     operator fun set(path: ResourcePath, value: V): Unit =
-        when (val target = findNode(path)) {
-            is LeafNode ->
-                target.data = value
-
-            else ->
-                setSyntheticValue(target, value)
-        }
+        setNodeValue(findNode(path), value)
 
     operator fun get(path: ResourcePath): V =
-        when (val target = findNode(path)) {
-            is LeafNode ->
-                target.data
+        getNodeValue(findNode(path))
 
-            else ->
-                getSyntheticValue(target)
-        }
-
-    protected abstract fun setSyntheticValue(node: DescriptorNode<V>, value: V)
-    protected abstract fun getSyntheticValue(node: DescriptorNode<V>): V
+    protected abstract fun setNodeValue(node: DescriptorNode<V>, value: V)
+    protected abstract fun getNodeValue(node: DescriptorNode<V>): V
 
     protected open fun formatValue(value: V): String =
         "$value"
@@ -98,6 +102,28 @@ protected constructor(private val root: DescriptorNode<V>) {
         recursiveToString(root).joinToString(separator = System.lineSeparator())
 
     protected companion object {
+        private fun <V> collectKeys(node: InnerNode<V>): List<Deque<String>> {
+            val result = mutableListOf<Deque<String>>()
+            for ((path, subNode) in node.data) {
+                when (subNode) {
+                    is LeafNode -> {
+                        val stack = LinkedList<String>()
+                        stack.push(path)
+                        result.add(stack)
+                    }
+
+                    is InnerNode -> {
+                        val children = collectKeys(subNode)
+                        for (stack in children) {
+                            stack.push(path)
+                            result.add(stack)
+                        }
+                    }
+                }
+            }
+            return result
+        }
+
         fun <V> fromEnvironment(environment: Environment, defaultValue: V): InnerNode<V> {
             val algebra = DescriptorConstructionAlgebra(defaultValue)
 

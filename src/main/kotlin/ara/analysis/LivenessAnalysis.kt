@@ -3,103 +3,95 @@ package ara.analysis
 import ara.Direction
 import ara.analysis.dataflow.DataflowProblem
 import ara.analysis.live.LivenessDescriptor
+import ara.analysis.live.LivenessDescriptor.*
 import ara.control.Block
 import ara.storage.ResourceAllocation.variablesCreated
 import ara.storage.ResourceAllocation.variablesDestroyed
-import ara.storage.StorageDescriptor
+import ara.storage.ResourcePath
 import ara.syntax.Syntax
 
 
 class LivenessAnalysis(val program: Syntax.Program) {
 
-
-    data class LivenessRequirements(
-        val requiredIn: LivenessDescriptor,
-        val requiredOut: LivenessDescriptor
-    )
-
-    fun computeLivenessChangesInBlocks(routine: Syntax.RoutineDefinition): Map<Block, LivenessRequirements> {
-        val result = mutableMapOf<Block, LivenessRequirements>()
-
-        for (block in routine.graph) {
-            val data: StorageDescriptor<Boolean?> =
-                StorageDescriptor.fromEnvironment(routine.localEnvironment, null)
-
-            result[block] = computeLivenessChangesInBlock(block, data)
-        }
-
-        return result
-    }
-
-    private fun computeLivenessChangesInBlock(routine: Syntax.RoutineDefinition, block: Block): LivenessRequirements {
-        val currentlyLive = LivenessDescriptor(routine)
-        val requiredLiveBefore = LivenessDescriptor(routine)
-
-        for (instruction in block) {
-            for (destroyedVariable in instruction.variablesDestroyed()) {
-                when (currentlyLive[destroyedVariable]) {
-                    true ->
-                        currentlyLive[destroyedVariable] = false
-
-                    false ->
-                        requiredLiveBefore[destroyedVariable] = true
-
-
-                }
-
-
-            }
-
-            val destroyedVariables = instruction.variablesDestroyed()
-            requiredLiveBefore += destroyedVariables
-                .filter { currentlyLive[it] == null }
-            currentlyLive -= destroyedVariables
-
-            val createdVariables = instruction.variablesCreated()
-        }
-
-    }
-
-    private class LivenessProblem(val routine: Syntax.RoutineDefinition, direction: Direction) :
-        DataflowProblem<Block, StorageDescriptor<Boolean>>(
+    private class LivenessProblem(val routine: Syntax.RoutineDefinition) :
+        DataflowProblem<Block, LivenessDescriptor>(
             routine.graph.nodes,
             routine.graph::getSuccessors,
             routine.graph::getPredecessors,
-            direction
+            Direction.FORWARD
         ) {
 
-        override fun initialInValue(node: Block): StorageDescriptor<Boolean> {
-            val storage = StorageDescriptor.fromEnvironment(routine.localEnvironment, false)
-            if (direction == Direction.FORWARD) {
-                for (inputParameter in routine.inputParameters)
-                    storage[inputParameter.name.name] = true
+        override fun initialInValue(node: Block): LivenessDescriptor {
+            val initialValues = LivenessDescriptor(routine)
+            for (inputParameter in routine.inputParameters) {
+                initialValues += ResourcePath.ofIdentifier(inputParameter.name) to inputParameter.range
             }
-            return storage
+            return initialValues
         }
 
-        override fun initialOutValue(node: Block): StorageDescriptor<Boolean> {
-            val storage = StorageDescriptor.fromEnvironment(routine.localEnvironment, false)
-            if (direction == Direction.BACKWARD) {
-                for (outputParameter in routine.outputParameters)
-                    storage[outputParameter.name.name] = true
+        override fun initialOutValue(node: Block): LivenessDescriptor =
+            LivenessDescriptor(routine)
+
+        private fun combine(a: LivenessState, b: LivenessState): LivenessState = when (a) {
+            Unknown ->
+                b
+
+            is Initialized -> when (b) {
+                is Initialized ->
+                    Initialized(a.initializers + b.initializers)
+
+                is Finalized ->
+                    Conflict(a.initializers, b.finalizers)
+
+                else ->
+                    combine(b, a)
             }
-            return storage
+
+            is Finalized -> when (b) {
+                is Finalized ->
+                    Finalized(a.finalizers + b.finalizers)
+
+                is Initialized ->
+                    Conflict(b.initializers, a.finalizers)
+
+                else ->
+                    combine(b, a)
+            }
+
+            is Conflict -> when (b) {
+                is Conflict ->
+                    Conflict(a.initializers + b.initializers, a.finalizers + b.finalizers)
+
+                is Initialized ->
+                    Conflict(a.initializers + b.initializers, a.finalizers)
+
+                is Finalized ->
+                    Conflict(a.initializers, a.finalizers + b.finalizers)
+
+                else ->
+                    combine(b, a)
+            }
         }
 
-        override fun combine(a: StorageDescriptor<Boolean>, b: StorageDescriptor<Boolean>): StorageDescriptor<Boolean> =
-            StorageDescriptor.combine(a, b, Boolean::or)
-
-        override fun transfer(value: StorageDescriptor<Boolean>, node: Block): StorageDescriptor<Boolean> {
-            val result = value.copy()
-            for (instruction in node) {
-                for (destroyed in instruction.variablesDestroyed()) {
-                    result[destroyed] = false
-                }
-                for (created in instruction.variablesCreated()) {
-                    result[created] = true
-                }
+        override fun combine(a: LivenessDescriptor, b: LivenessDescriptor): LivenessDescriptor {
+            val result = LivenessDescriptor(routine)
+            for (path in result.keys) {
+                val aValue = a[path]
+                val bValue = b[path]
+                result[path] = combine(aValue, bValue)
             }
             return result
+        }
+
+        override fun transfer(value: LivenessDescriptor, node: Block): LivenessDescriptor {
+            val liveValues = value.copy()
+            for (instruction in node) {
+                for (finalized in instruction.variablesDestroyed())
+                    liveValues -= finalized to instruction.range
+                for (initialized in instruction.variablesCreated())
+                    liveValues -= initialized to instruction.range
+            }
+            return liveValues
         }
     }
 }

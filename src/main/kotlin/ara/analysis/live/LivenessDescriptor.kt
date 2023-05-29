@@ -1,11 +1,12 @@
 package ara.analysis.live
 
+import ara.analysis.live.LivenessState.*
 import ara.position.Range
 import ara.storage.ResourcePath
 import ara.storage.StorageDescriptor
 import ara.syntax.Syntax
 
-class LivenessDescriptor : StorageDescriptor<LivenessDescriptor.LivenessState> {
+class LivenessDescriptor : StorageDescriptor<LivenessState> {
 
     constructor(routine: Syntax.RoutineDefinition) : super(fromEnvironment(routine.localEnvironment, Unknown))
 
@@ -23,7 +24,7 @@ class LivenessDescriptor : StorageDescriptor<LivenessDescriptor.LivenessState> {
 
     override fun setNodeValue(node: DescriptorNode<LivenessState>, value: LivenessState): Unit = when (node) {
         is LeafNode ->
-            node.data = node.data combineWith value
+            node.data = node.data overwrittenWith value
 
         is InnerNode ->
             for (subNode in node) {
@@ -97,39 +98,31 @@ class LivenessDescriptor : StorageDescriptor<LivenessDescriptor.LivenessState> {
         is Conflict -> "!"
     }
 
-    sealed interface LivenessState {
-        infix fun combineWith(other: LivenessState): LivenessState
-    }
+    private infix fun LivenessState.overwrittenWith(other: LivenessState): LivenessState = when (this) {
+        Unknown ->
+            other
 
-    object Unknown : LivenessState {
-        override fun combineWith(other: LivenessState): LivenessState = other
-    }
-
-    class Initialized(val initializers: List<Range>) : LivenessState {
-        override fun combineWith(other: LivenessState): LivenessState =
+        is Initialized ->
             if (other is Initialized) Initialized(this.initializers + other.initializers)
             else other
-    }
 
-    class Finalized(val finalizers: List<Range>) : LivenessState {
-        override fun combineWith(other: LivenessState): LivenessState =
+        is Finalized ->
             if (other is Finalized) Finalized(this.finalizers + other.finalizers)
             else other
-    }
 
-    class Conflict(val initializers: List<Range>, val finalizers: List<Range>) : LivenessState {
-        override fun combineWith(other: LivenessState): LivenessState = when (other) {
-            is Conflict ->
-                Conflict(initializers + other.initializers, finalizers + other.finalizers)
+        is Conflict ->
+            when (other) {
+                is Conflict ->
+                    Conflict(initializers + other.initializers, finalizers + other.finalizers)
 
-            is Initialized ->
-                Conflict(initializers + other.initializers, finalizers)
+                is Initialized ->
+                    Conflict(initializers + other.initializers, finalizers)
 
-            is Finalized ->
-                Conflict(initializers, finalizers + other.finalizers)
+                is Finalized ->
+                    Conflict(initializers, finalizers + other.finalizers)
 
-            Unknown ->
-                this
-        }
+                Unknown ->
+                    this
+            }
     }
 }

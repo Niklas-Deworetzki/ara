@@ -73,7 +73,6 @@ abstract class Analysis<T> {
     }
 
     companion object {
-
         fun ofInput(inputSource: InputSource): Analysis<Syntax.Program> =
             ProgramAnalysis(inputSource)
     }

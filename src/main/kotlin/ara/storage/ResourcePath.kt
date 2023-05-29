@@ -14,8 +14,6 @@ interface ResourcePath {
     fun appended(accessor: String): ResourcePath = TODO()
 
     companion object {
-        fun localRoot(name: String): ResourcePath = TODO()
-
         fun of(segments: Iterable<String>): ResourcePath = TODO()
 
         fun ofIdentifier(name: Syntax.Identifier): ResourcePath = TODO()

@@ -1,6 +1,9 @@
 package ara.syntax
 
 import ara.Direction
+import ara.analysis.dataflow.DataflowSolution
+import ara.analysis.live.LivenessState
+import ara.control.Block
 import ara.control.ControlGraph
 import ara.position.Range
 import ara.reporting.Message
@@ -36,6 +39,7 @@ sealed class Syntax {
         lateinit var inputParameterTypes: List<ara.types.Type>
         lateinit var outputParameterTypes: List<ara.types.Type>
         lateinit var graph: ControlGraph
+        lateinit var liveness: DataflowSolution<Block, LivenessState>
     }
 
     data class Parameter(

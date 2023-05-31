@@ -4,17 +4,17 @@ import ara.syntax.Syntax
 
 object ResourceAllocation {
 
-    fun Syntax.ResourceExpression.createdResource(): ResourcePath? = when (this) {
+    fun Syntax.ResourceExpression.asResourcePath(): ResourcePath? = when (this) {
         is Syntax.MemberAccess -> {
-            val result = this.storage.createdResource()
-            result?.appended(this.member.name)
+            val result = this.storage.asResourcePath()
+            result?.appended(this.member)
         }
 
         is Syntax.NamedStorage ->
-            ResourcePath.localRoot(this.name.name)
+            ResourcePath.ofIdentifier(this.name)
 
         is Syntax.TypedStorage ->
-            this.storage.createdResource()
+            this.storage.asResourcePath()
 
         is Syntax.IntegerLiteral ->
             null
@@ -22,10 +22,10 @@ object ResourceAllocation {
 
     fun Syntax.Instruction.variablesCreated(): Collection<ResourcePath> = when (this) {
         is Syntax.Assignment ->
-            setOfNotNull(this.dst.createdResource())
+            setOfNotNull(this.dst.asResourcePath())
 
         is Syntax.Call ->
-            this.dstList.mapNotNull { it.createdResource() }
+            this.dstList.mapNotNull { it.asResourcePath() }
 
         else ->
             emptyList()
@@ -33,12 +33,39 @@ object ResourceAllocation {
 
     fun Syntax.Instruction.variablesDestroyed(): Collection<ResourcePath> = when (this) {
         is Syntax.Assignment ->
-            setOfNotNull(this.src.createdResource())
+            setOfNotNull(this.src.asResourcePath())
 
         is Syntax.Call ->
-            this.srcList.mapNotNull { it.createdResource() }
+            this.srcList.mapNotNull { it.asResourcePath() }
 
         else ->
             emptyList()
+    }
+
+    fun Syntax.ArithmeticExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {
+        is Syntax.ArithmeticBinary ->
+            listOfNotNull(this.lhs.asResourcePath(), this.rhs.asResourcePath())
+
+        is Syntax.ArithmeticValue ->
+            setOfNotNull(this.value.asResourcePath())
+    }
+
+    fun Syntax.ConditionalExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {
+        is Syntax.ComparativeBinary ->
+            listOfNotNull(this.lhs.asResourcePath(), this.rhs.asResourcePath())
+    }
+
+    fun Syntax.Instruction.variablesUsed(): Collection<ResourcePath> = when (this) {
+        is Syntax.Assignment ->
+            this.arithmetic?.value?.asResourcePaths() ?: emptySet()
+
+        is Syntax.Call ->
+            emptySet()
+
+        is Syntax.Conditional ->
+            this.condition.asResourcePaths()
+
+        is Syntax.Unconditional ->
+            emptySet()
     }
 }

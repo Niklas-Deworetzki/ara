@@ -1,12 +1,8 @@
 package ara
 
 import ara.analysis.Analysis
-import ara.input.Scanner
-import ara.input.Token
 import ara.position.InputSource
-import ara.reporting.Message
 import ara.reporting.MessageFormatter
-import org.fusesource.jansi.Ansi
 import java.io.File
 
 object Main {

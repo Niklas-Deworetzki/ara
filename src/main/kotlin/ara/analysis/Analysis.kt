@@ -54,6 +54,13 @@ abstract class Analysis<T> {
         reportError(mkErrorMessage(message, syntax.range))
 
 
+    open val isDebugEnabled: Boolean = false
+
+    protected inline fun debug(message: () -> String) {
+        if (isDebugEnabled)
+            System.err.println(message())
+    }
+
     private class ProgramAnalysis(val input: InputSource) : Analysis<Syntax.Program>() {
         override fun runAnalysis(): Syntax.Program {
             val program = loadProgram()
@@ -64,6 +71,7 @@ abstract class Analysis<T> {
             includeAnalysis(TypeDefinitionAnalysis(program))
             includeAnalysis(LocalDeclarationAnalysis(program))
             includeAnalysis(LocalTypeAnalysis(program))
+            includeAnalysis(LivenessAnalysis(program))
             return program
         }
 

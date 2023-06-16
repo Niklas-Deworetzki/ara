@@ -66,17 +66,22 @@ abstract class Analysis<T> {
             val program = loadProgram()
             program.environment = Builtins.environment()
 
-            includeAnalysis(RoutineDefinitionAnalysis(program))
-            includeAnalysis(ControlGraphBuilder(program))
-            includeAnalysis(TypeDefinitionAnalysis(program))
-            includeAnalysis(LocalDeclarationAnalysis(program))
-            includeAnalysis(LocalTypeAnalysis(program))
-            includeAnalysis(LivenessAnalysis(program))
+            andThen { RoutineDefinitionAnalysis(program) }
+            andThen { ControlGraphBuilder(program) }
+            andThen { TypeDefinitionAnalysis(program) }
+            andThen { LocalDeclarationAnalysis(program) }
+            andThen { LocalTypeAnalysis(program) }
+            andThen { LivenessAnalysis(program) }
             return program
         }
 
         private fun loadProgram(): Syntax.Program = Scanner(input).use {
             includeAnalysis(Parser(it))
+        }
+
+        private inline fun andThen(analysisConstructor: () -> Analysis<Unit>) {
+            val analysis = analysisConstructor()
+            proceedAnalysis { includeAnalysis(analysis) }
         }
     }
 

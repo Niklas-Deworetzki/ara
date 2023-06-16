@@ -314,12 +314,14 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
 
     private fun parseResourceExpression(): Syntax.ResourceExpression = when (lookahead.type) {
         OPERATOR_SUB, INTEGER -> parseIntegerLiteral()
-        else -> parseStorage()
+        IDENTIFIER -> parseStorage()
+        else -> syntaxError("resource expression")
     }
 
     private fun parseIntegerLiteral(): Syntax.IntegerLiteral = parse {
         val isNegative = parseOptionalNegativeSign()
-        val literal = nextTokenShouldBe(INTEGER, "integer literal")?.toIntOrNull() ?: syntaxError("valid integer literal")
+        val literal = nextTokenShouldBe(INTEGER, "integer literal")?.toIntOrNull()
+            ?: syntaxError("valid integer literal")
         Syntax.IntegerLiteral(if (isNegative) -literal else literal)
     }
 
@@ -363,12 +365,14 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
         nextTokenShouldBe(PAREN_L, "opening parenthesis for condition")
         val lhs = parseResourceExpression()
         val comparator = COMPARISON_OPERATORS[lookahead.type] ?: syntaxError("comparison operator")
+        next()
         val rhs = parseResourceExpression()
         nextTokenShouldBe(PAREN_R, "closing parenthesis for condition")
         Syntax.ComparativeBinary(lhs, comparator, rhs)
     }
 
     private fun parseArithmeticExpression(): Syntax.ArithmeticExpression = parse {
+        // TODO: Allow atomic expressions here.
         nextTokenShouldBe(PAREN_L, "opening parenthesis of arithmetic expression")
         val lhs = parseResourceExpression()
         val operator = parseOptionalBinaryOperator()

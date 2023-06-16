@@ -4,6 +4,7 @@ import ara.control.Block
 import ara.control.Block.Companion.isBeginOfBlock
 import ara.control.Block.Companion.isEndOfBlock
 import ara.control.ControlGraph
+import ara.control.ControlGraphVisualizer.Companion.asGraphString
 import ara.syntax.Syntax
 import ara.utils.Collections.sublist
 
@@ -14,9 +15,12 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
     override fun runAnalysis() {
         for (routine in program.definitions.filterIsInstance<Syntax.RoutineDefinition>()) {
             val blocks = BlockExtractor(routine).extract()
-            val graph = GraphConstructor(blocks).construct()
+            val graph = GraphConstructor(routine, blocks).construct()
 
             routine.graph = graph
+            debug {
+                routine.graph.asGraphString()
+            }
         }
     }
 
@@ -69,7 +73,7 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
         }
     }
 
-    inner class GraphConstructor(private val blocks: List<Block>) {
+    inner class GraphConstructor(private val routine: Syntax.RoutineDefinition, private val blocks: List<Block>) {
         private val successors = mutableMapOf<Syntax.Identifier, Block>()
         private val predecessors = mutableMapOf<Syntax.Identifier, Block>()
 
@@ -82,7 +86,7 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
                 }
                 indexFwLabels(blocks.first())
             }
-            return ControlGraph(blocks, blocks.first(), blocks.last(), successors, predecessors)
+            return ControlGraph(routine.name, blocks, blocks.first(), blocks.last(), successors, predecessors)
         }
 
         private fun indexFwLabels(block: Block) {

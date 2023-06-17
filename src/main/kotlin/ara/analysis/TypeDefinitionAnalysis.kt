@@ -13,6 +13,18 @@ class TypeDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Uni
         proceedAnalysis {
             typeDefinitions.forEach(::computeDefinedType)
         }
+
+        debug { showDefinedTypes(typeDefinitions) }
+    }
+
+    private fun showDefinedTypes(typeDefinitions: List<Syntax.TypeDefinition>): String = when {
+        typeDefinitions.isEmpty() -> "No user defined types are present."
+
+        else -> typeDefinitions.joinToString("\n") {
+            val name = it.name
+            val type = program.environment.getType(name)
+            "$name defined as $type"
+        }
     }
 
     private fun declareType(definition: Syntax.TypeDefinition) {
@@ -25,12 +37,9 @@ class TypeDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Uni
         definition: Syntax.TypeDefinition
     ) {
         val context = TypeComputation(program.environment, definition.type)
-        val computedType = context.runAnalysis()
+        val computedType = includeAnalysis(context)
 
-        if (context.hasReportedErrors) {
-            context.reportedErrors
-                .forEach(::reportError)
-        } else {
+        if (!context.hasReportedErrors) {
             val declaredType = program.environment.getType(definition.name)!!
             when (unify(declaredType, computedType)) {
                 null ->

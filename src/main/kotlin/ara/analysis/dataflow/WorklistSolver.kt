@@ -39,18 +39,17 @@ class WorklistSolver<N, L> : DataflowSolver<N, L> {
         while (worklist.isNotEmpty()) {
             val node = worklist.removeFirst()
 
-            val allEquationInputs = equationInputNodesFor(problem, node)
+            val equationInput = equationInputNodesFor(problem, node)
                 .mapNotNull(equationInValues::get)
-            val combinedEquationInput = when (allEquationInputs.size) {
-                2 -> problem.combine(allEquationInputs[0], allEquationInputs[1])
-                1 -> allEquationInputs.first()
-                else -> equationInValues[node]!!
-            }
+                .fold(equationInValues[node]!!, problem::combine)
+            equationInValues[node] = equationInput
 
-            val equationOutput = problem.transfer(combinedEquationInput, node)
-            if (equationOutput != equationOutValues.put(node, equationOutput)) {
+            val equationOutput = problem.transfer(equationInput, node)
+            val previousEquationOutput = equationOutValues.put(node, equationOutput)
+            if (equationOutput != previousEquationOutput) {
                 for (affectedByOutput in equationOutputNodesFor(problem, node)) {
-                    worklist.add(affectedByOutput)
+                    if (affectedByOutput !in worklist)
+                        worklist.add(affectedByOutput)
                 }
             }
         }

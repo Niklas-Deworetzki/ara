@@ -25,6 +25,14 @@ protected constructor(protected val root: DescriptorNode<V>) {
     protected class LeafNode<V>(var data: V) : DescriptorNode<V> {
         override fun copy(): DescriptorNode<V> =
             LeafNode(data)
+
+        override fun equals(other: Any?): Boolean {
+            return other is LeafNode<*> && other.data == data
+        }
+
+        override fun hashCode(): Int {
+            return data.hashCode()
+        }
     }
 
     protected class InnerNode<V>(val data: MutableMap<String, DescriptorNode<V>>) :
@@ -38,6 +46,14 @@ protected constructor(protected val root: DescriptorNode<V>) {
             for ((key, value) in this.data)
                 copiedData[key] = value.copy()
             return InnerNode(copiedData)
+        }
+
+        override fun equals(other: Any?): Boolean {
+            return other is InnerNode<*> && other.data == data
+        }
+
+        override fun hashCode(): Int {
+            return data.hashCode()
         }
     }
 
@@ -100,6 +116,14 @@ protected constructor(protected val root: DescriptorNode<V>) {
 
     override fun toString(): String =
         recursiveToString(root).joinToString(separator = System.lineSeparator())
+
+    override fun equals(other: Any?): Boolean {
+        return other is StorageDescriptor<*> && this.root == other.root
+    }
+
+    override fun hashCode(): Int {
+        return root.hashCode()
+    }
 
     protected companion object {
         private fun <V> collectKeys(node: InnerNode<V>): List<Deque<String>> {

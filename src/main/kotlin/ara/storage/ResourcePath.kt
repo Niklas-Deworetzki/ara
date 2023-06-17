@@ -17,6 +17,18 @@ private constructor(private val path: List<String>) {
     fun appended(accessor: Syntax.Identifier): ResourcePath =
         ResourcePath(path + accessor.name)
 
+    override fun equals(other: Any?): Boolean {
+        return other is ResourcePath && other.path == this.path
+    }
+
+    override fun hashCode(): Int {
+        return path.hashCode()
+    }
+
+    override fun toString(): String {
+        return path.joinToString(separator = ".")
+    }
+
     companion object {
         fun of(segments: Iterable<String>): ResourcePath =
             ResourcePath(segments.toList())

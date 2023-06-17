@@ -6,9 +6,9 @@ sealed interface LivenessState {
 
     object Unknown : LivenessState
 
-    class Initialized(val initializers: List<Range>) : LivenessState
+    data class Initialized(val initializers: Set<Range>) : LivenessState
 
-    class Finalized(val finalizers: List<Range>) : LivenessState
+    data class Finalized(val finalizers: Set<Range>) : LivenessState
 
-    class Conflict(val initializers: List<Range>, val finalizers: List<Range>) : LivenessState
+    data class Conflict(val initializers: Set<Range>, val finalizers: Set<Range>) : LivenessState
 }

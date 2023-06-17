@@ -13,14 +13,14 @@ class LivenessDescriptor : StorageDescriptor<LivenessState> {
     private constructor(root: DescriptorNode<LivenessState>) : super(root)
 
     fun copy(): LivenessDescriptor =
-        LivenessDescriptor(root)
+        LivenessDescriptor(root.copy())
 
 
     operator fun plusAssign(initializer: Pair<ResourcePath, Range>) =
-        set(initializer.first, Initialized(listOf(initializer.second)))
+        set(initializer.first, Initialized(setOf(initializer.second)))
 
     operator fun minusAssign(finalizer: Pair<ResourcePath, Range>) =
-        set(finalizer.first, Finalized(listOf(finalizer.second)))
+        set(finalizer.first, Finalized(setOf(finalizer.second)))
 
     override fun setNodeValue(node: DescriptorNode<LivenessState>, value: LivenessState): Unit = when (node) {
         is LeafNode ->
@@ -54,8 +54,8 @@ class LivenessDescriptor : StorageDescriptor<LivenessState> {
             node.data
 
         is InnerNode -> {
-            val initializers = mutableListOf<Range>()
-            val finalizers = mutableListOf<Range>()
+            val initializers = mutableSetOf<Range>()
+            val finalizers = mutableSetOf<Range>()
 
             for (value in allLeafValues(node)) {
                 when (value) {

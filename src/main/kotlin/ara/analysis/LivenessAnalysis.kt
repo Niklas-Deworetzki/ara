@@ -28,4 +28,17 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
 
         override fun run() = println(currentState)
     }
+
+
+    companion object {
+
+        fun Syntax.RoutineDefinition.liveFromParameterList(parameters: List<Syntax.Parameter>): LivenessDescriptor {
+            val live = LivenessDescriptor(this)
+            for (parameter in parameters) {
+                live += ResourcePath.ofIdentifier(parameter.name) to parameter.range
+            }
+            return live
+        }
+
+    }
 }

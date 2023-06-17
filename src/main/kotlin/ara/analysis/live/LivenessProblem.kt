@@ -16,12 +16,9 @@ class LivenessProblem(val routine: Syntax.RoutineDefinition) :
         Direction.FORWARD
     ) {
 
-    override fun initialInValue(node: Block): LivenessDescriptor {
-        val initialValues = LivenessDescriptor(routine)
-        for (inputParameter in routine.inputParameters) {
-            initialValues += ResourcePath.ofIdentifier(inputParameter.name) to inputParameter.range
-        }
-        return initialValues
+    override fun initialInValue(node: Block): LivenessDescriptor = when (node) {
+        routine.graph.beginBlock -> routine.liveFromParameterList(routine.inputParameters)
+        else -> LivenessDescriptor(routine)
     }
 
     override fun initialOutValue(node: Block): LivenessDescriptor =

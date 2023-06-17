@@ -40,7 +40,7 @@ class WorklistSolver<N, L> : DataflowSolver<N, L> {
             val node = worklist.removeFirst()
 
             val equationInput = equationInputNodesFor(problem, node)
-                .mapNotNull(equationInValues::get)
+                .mapNotNull(equationOutValues::get)
                 .fold(equationInValues[node]!!, problem::combine)
             equationInValues[node] = equationInput
 

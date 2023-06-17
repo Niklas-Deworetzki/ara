@@ -11,8 +11,8 @@ import ara.syntax.Syntax
 class LivenessProblem(val routine: Syntax.RoutineDefinition) :
     DataflowProblem<Block, LivenessDescriptor>(
         routine.graph.nodes,
-        routine.graph::getSuccessors,
         routine.graph::getPredecessors,
+        routine.graph::getSuccessors,
         Direction.FORWARD
     ) {
 

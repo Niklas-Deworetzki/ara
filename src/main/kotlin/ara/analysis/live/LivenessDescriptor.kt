@@ -10,7 +10,7 @@ class LivenessDescriptor : StorageDescriptor<LivenessState> {
 
     constructor(routine: Syntax.RoutineDefinition) : super(fromEnvironment(routine.localEnvironment, Unknown))
 
-    private constructor(root: DescriptorNode<LivenessState>) : super(root)
+    private constructor(root: InnerNode<LivenessState>) : super(root)
 
     fun copy(): LivenessDescriptor =
         LivenessDescriptor(root.copy())

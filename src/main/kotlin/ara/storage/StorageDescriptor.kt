@@ -16,58 +16,48 @@ import java.util.LinkedList
  * (i.e. for paths describing non-leaf nodes) as well.
  */
 abstract class StorageDescriptor<V>
-protected constructor(protected val root: DescriptorNode<V>) {
+protected constructor(val root: InnerNode<V>) {
 
-    protected sealed interface DescriptorNode<V> {
+    sealed interface DescriptorNode<V> {
         fun copy(): DescriptorNode<V>
     }
 
-    protected class LeafNode<V>(var data: V) : DescriptorNode<V> {
-        override fun copy(): DescriptorNode<V> =
+    class LeafNode<V>(var data: V) : DescriptorNode<V> {
+        override fun copy(): LeafNode<V> =
             LeafNode(data)
 
-        override fun equals(other: Any?): Boolean {
-            return other is LeafNode<*> && other.data == data
-        }
+        override fun equals(other: Any?): Boolean =
+            other is LeafNode<*> && other.data == data
 
-        override fun hashCode(): Int {
-            return data.hashCode()
-        }
+        override fun hashCode(): Int =
+            data.hashCode()
     }
 
-    protected class InnerNode<V>(val data: MutableMap<String, DescriptorNode<V>>) :
+    class InnerNode<V>(val data: MutableMap<String, DescriptorNode<V>>) :
         DescriptorNode<V>, Iterable<DescriptorNode<V>> {
 
         override fun iterator(): Iterator<DescriptorNode<V>> =
             this.data.values.iterator()
 
-        override fun copy(): DescriptorNode<V> {
+        override fun copy(): InnerNode<V> {
             val copiedData = mutableMapOf<String, DescriptorNode<V>>()
             for ((key, value) in this.data)
                 copiedData[key] = value.copy()
             return InnerNode(copiedData)
         }
 
-        override fun equals(other: Any?): Boolean {
-            return other is InnerNode<*> && other.data == data
-        }
+        override fun equals(other: Any?): Boolean =
+            other is InnerNode<*> && other.data == data
 
-        override fun hashCode(): Int {
-            return data.hashCode()
-        }
+        override fun hashCode(): Int =
+            data.hashCode()
     }
 
-    val keys: Set<ResourcePath>
-        get() = when (root) {
-            is LeafNode ->
-                emptySet()
-
-            is InnerNode ->
-                collectKeys(root).map(ResourcePath::of).toSet()
-        }
+    val keys: Set<ResourcePath> =
+        collectKeys(root).map(ResourcePath::of).toSet()
 
     private fun findNode(path: ResourcePath): DescriptorNode<V> {
-        var currentNode = root
+        var currentNode: DescriptorNode<V> = root
         for (index in path.indices) {
             when (currentNode) {
                 is InnerNode ->
@@ -90,32 +80,12 @@ protected constructor(protected val root: DescriptorNode<V>) {
     protected abstract fun setNodeValue(node: DescriptorNode<V>, value: V)
     protected abstract fun getNodeValue(node: DescriptorNode<V>): V
 
-    protected open fun formatValue(value: V): String =
+    internal open fun formatValue(value: V): String =
         "$value"
 
-    private fun recursiveToString(node: DescriptorNode<V>): List<String> = when (node) {
-        is LeafNode ->
-            listOf(formatValue(node.data))
-
-        is InnerNode -> {
-            val lineBuffer = mutableListOf<String>()
-            for (key in node.data.keys.sorted()) {
-                lineBuffer.add(key)
-
-                val formattedValue = recursiveToString(node.data[key]!!)
-
-                val firstLine = formattedValue.first()
-                lineBuffer.add("├$firstLine")
-                for (remainingLine in formattedValue.drop(1)) {
-                    lineBuffer.add("│$remainingLine")
-                }
-            }
-            lineBuffer
-        }
-    }
 
     override fun toString(): String =
-        recursiveToString(root).joinToString(separator = System.lineSeparator())
+        StorageDescriptorFormatter(this).format()
 
     override fun equals(other: Any?): Boolean {
         return other is StorageDescriptor<*> && this.root == other.root

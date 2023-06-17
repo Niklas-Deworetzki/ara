@@ -1,11 +1,11 @@
 package ara.analysis.live
 
 import ara.Direction
+import ara.analysis.LivenessAnalysis.Companion.liveFromParameterList
 import ara.analysis.dataflow.DataflowProblem
 import ara.control.Block
 import ara.storage.ResourceAllocation.variablesCreated
 import ara.storage.ResourceAllocation.variablesDestroyed
-import ara.storage.ResourcePath
 import ara.syntax.Syntax
 
 class LivenessProblem(val routine: Syntax.RoutineDefinition) :
@@ -68,9 +68,7 @@ class LivenessProblem(val routine: Syntax.RoutineDefinition) :
     override fun combine(a: LivenessDescriptor, b: LivenessDescriptor): LivenessDescriptor {
         val result = LivenessDescriptor(routine)
         for (path in result.keys) {
-            val aValue = a[path]
-            val bValue = b[path]
-            result[path] = combine(aValue, bValue)
+            result[path] = combine(a[path], b[path])
         }
         return result
     }

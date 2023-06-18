@@ -12,8 +12,11 @@ import ara.types.Environment
 sealed class Syntax {
     lateinit var range: Range
 
-    data class Identifier(val name: String) : Syntax() {
+    data class Identifier(val name: String) : Syntax(), Comparable<Identifier> {
         override fun toString(): String = Message.quote(name)
+
+        override fun compareTo(other: Identifier): Int =
+            this.name.compareTo(other.name)
     }
 
     data class Program(val definitions: List<Definition>) {

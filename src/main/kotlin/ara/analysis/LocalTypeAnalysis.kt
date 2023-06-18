@@ -32,8 +32,8 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
                 InstructionTypeChecker(it).check()
             }
             definedRoutines.forEach {
-                val variableNames = it.localEnvironment.variables.map { variable -> variable.key }.toSet()
-                ensureVariablesHaveInstantiatedTypes(it.localEnvironment, variableNames)
+                val variableNames = it.localEnvironment.variableNames
+                ensureVariablesHaveInstantiatedTypes(it.localEnvironment, variableNames.toSet())
             }
         }
     }

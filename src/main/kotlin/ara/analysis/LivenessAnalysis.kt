@@ -26,8 +26,20 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
 
         override fun runAnalysis() {
             reportConflicts()
-            // TODO: Verify that only output parameters are live at end of routine
+            proceedAnalysis {
+                reportNotInitializedVariables()
+                reportNotFinalizedVariables()
+            }
             // TODO: Verify initialization and finalization in every block.
+        }
+
+        private fun reportNotFinalizedVariables() {
+            routine.localEnvironment.variables
+
+        }
+
+        private fun reportNotInitializedVariables() {
+
         }
 
         private fun reportConflicts() {
@@ -35,6 +47,7 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
             for (variable in conflicts.keys.sorted()) {
                 val conflict = conflicts[variable]!!
 
+                // TODO: Check if there is no Conflict in OUT of predecessors, indicating that this is the root cause.
                 val message = reportError("Variable $variable has conflicting initializers and finalizers.")
                 val definitions = listOf(
                     conflict.initializers.map { it to "initializer" },
@@ -50,10 +63,9 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
 
     class ConflictsFinder(val routine: Syntax.RoutineDefinition) {
         private val detectedConflicts = mutableMapOf<Syntax.Identifier, LivenessState>()
-        private val variables = routine.localEnvironment.variables.map { it.key }
 
         private fun initState() {
-            for (variable in variables) {
+            for (variable in routine.localEnvironment.variableNames) {
                 detectedConflicts[variable] = LivenessState.Unknown
             }
         }
@@ -69,7 +81,7 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
             for (block in routine.graph) {
                 val liveAtEnd = routine.liveness.getOut(block)
 
-                for (variable in variables) {
+                for (variable in routine.localEnvironment.variableNames) {
                     val path = ResourcePath.ofIdentifier(variable)
                     val potentialConflict = liveAtEnd[path]
 

@@ -11,6 +11,8 @@ class Environment(val outer: Environment? = null) {
     val variables: Sequence<Map.Entry<Syntax.Identifier, Type>>
         get() = variableMap.asSequence()
 
+    val variableNames: Sequence<Syntax.Identifier>
+        get() = variables.map { it.key }
 
     fun getRoutine(name: Syntax.Identifier): Syntax.RoutineDefinition? =
         lookupFromMap(this, Environment::routineMap, name)

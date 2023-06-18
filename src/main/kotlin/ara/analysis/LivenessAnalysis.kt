@@ -14,14 +14,15 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
     override fun runAnalysis() {
         val routines = program.definitions.filterIsInstance<Syntax.RoutineDefinition>()
         for (routine in routines) {
+            routine.liveness = LivenessProblem(routine).solve()
+            for (block in routine.graph) {
+                println(routine.liveness.getOut(block))
+            }
             includeAnalysis(RoutineLivenessAnalysis(routine))
         }
     }
 
     class RoutineLivenessAnalysis(val routine: Syntax.RoutineDefinition) : Analysis<Unit>() {
-        init {
-            routine.liveness = LivenessProblem(routine).solve()
-        }
 
         override fun runAnalysis() {
             reportConflicts()
@@ -88,7 +89,8 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
 
     companion object {
         fun Syntax.RoutineDefinition.liveFromParameterList(parameters: List<Syntax.Parameter>): LivenessDescriptor {
-            val live = LivenessDescriptor(this)
+            val finalized = LivenessState.Finalized(emptySet())
+            val live = LivenessDescriptor(this, finalized)
             for (parameter in parameters) {
                 live += ResourcePath.ofIdentifier(parameter.name) to parameter.range
             }

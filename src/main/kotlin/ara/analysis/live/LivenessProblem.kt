@@ -21,19 +21,19 @@ class LivenessProblem(val routine: Syntax.RoutineDefinition, direction: Directio
         if (direction == Direction.FORWARD && node == routine.graph.beginBlock)
             routine.liveFromParameterList(routine.inputParameters)
         else
-            LivenessDescriptor(routine)
+            LivenessDescriptor(routine, LivenessState.Unknown)
 
     override fun initialOutValue(node: Block): LivenessDescriptor =
         if (direction == Direction.BACKWARD && node == routine.graph.endBlock)
             routine.liveFromParameterList(routine.outputParameters)
         else
-            LivenessDescriptor(routine)
+            LivenessDescriptor(routine, LivenessState.Unknown)
 
     private fun combine(a: LivenessState, b: LivenessState): LivenessState =
         a meet b
 
     override fun combine(a: LivenessDescriptor, b: LivenessDescriptor): LivenessDescriptor {
-        val result = LivenessDescriptor(routine)
+        val result = LivenessDescriptor(routine, LivenessState.Unknown)
         for (path in result.keys) {
             result[path] = combine(a[path], b[path])
         }

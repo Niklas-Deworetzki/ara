@@ -79,12 +79,12 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
 
         fun construct(): ControlGraph {
             if (blocks.size > 1) {
-                indexFwLabels(blocks.last())
+                indexBwLabels(blocks.first())
                 for (block in sublist(blocks, 1, 1)) {
                     indexFwLabels(block)
                     indexBwLabels(block)
                 }
-                indexFwLabels(blocks.first())
+                indexFwLabels(blocks.last())
             }
             return ControlGraph(routine.name, blocks, blocks.first(), blocks.last(), successors, predecessors)
         }

@@ -8,7 +8,8 @@ import ara.syntax.Syntax
 
 class LivenessDescriptor : StorageDescriptor<LivenessState> {
 
-    constructor(routine: Syntax.RoutineDefinition) : super(fromEnvironment(routine.localEnvironment, Unknown))
+    constructor(routine: Syntax.RoutineDefinition, defaultState: LivenessState) :
+            super(fromEnvironment(routine.localEnvironment, defaultState))
 
     private constructor(root: InnerNode<LivenessState>) : super(root)
 

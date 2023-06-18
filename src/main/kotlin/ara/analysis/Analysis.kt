@@ -3,11 +3,9 @@ package ara.analysis
 import ara.input.Parser
 import ara.input.Scanner
 import ara.position.InputSource
-import ara.position.Range
 import ara.reporting.Message
 import ara.syntax.Syntax
 import ara.types.Builtins
-import org.fusesource.jansi.Ansi
 
 abstract class Analysis<T> {
     abstract fun runAnalysis(): T
@@ -33,25 +31,15 @@ abstract class Analysis<T> {
     val hasReportedErrors: Boolean
         get() = _reportedErrors.isNotEmpty()
 
-    private fun mkErrorMessage(message: String, range: Range?): Message = Message(
-        Ansi.Color.RED,
-        "Error",
-        message,
-        range
-    )
 
-    fun reportError(message: Message) {
+    fun reportError(message: Message): Message {
         _reportedErrors.add(message)
+        return message
     }
 
-    fun reportError(message: String) =
-        reportError(mkErrorMessage(message, null))
-
-    fun reportError(range: Range, message: String) =
-        reportError(mkErrorMessage(message, range))
-
-    fun reportError(syntax: Syntax, message: String) =
-        reportError(mkErrorMessage(message, syntax.range))
+    fun reportError(message: String): Message {
+        return reportError(Message.error(message = message))
+    }
 
 
     open val isDebugEnabled: Boolean = false

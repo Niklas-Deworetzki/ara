@@ -22,8 +22,10 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
 
             val parameterNames = (it.inputParameters + it.outputParameters).map { parameter -> parameter.name }.toSet()
             ensureVariablesHaveInstantiatedTypes(it.localEnvironment, parameterNames)
-            it.inputParameterTypes = it.inputParameters.map { parameter -> it.localEnvironment.getVariable(parameter.name)!! }
-            it.outputParameterTypes = it.outputParameters.map { parameter -> it.localEnvironment.getVariable(parameter.name)!! }
+            it.inputParameterTypes =
+                it.inputParameters.map { parameter -> it.localEnvironment.getVariable(parameter.name)!! }
+            it.outputParameterTypes =
+                it.outputParameters.map { parameter -> it.localEnvironment.getVariable(parameter.name)!! }
         }
         proceedAnalysis { // We can't proceed if there are not inferred types in parameter lists, as they would be instantiated on calls which could cause hard-to-locate errors.
             definedRoutines.forEach {
@@ -43,7 +45,8 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
     private fun ensureVariablesHaveInstantiatedTypes(environment: Environment, names: Set<Syntax.Identifier>) {
         val notInstantiatedNames = names.filterNot { environment.getVariable(it)!!.isInstantiated() }
         for (name in notInstantiatedNames) {
-            reportError(name, "Type of variable $name cannot be inferred. Perhaps some type annotations are missing?")
+            reportError("Type of variable $name cannot be inferred. Perhaps some type annotations are missing?")
+                .withPositionOf(name)
         }
     }
 
@@ -107,7 +110,8 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
         private fun checkCall(call: Syntax.Call) {
             val calledRoutine = routine.localEnvironment.getRoutine(call.routine)
             if (calledRoutine == null) {
-                reportError(call.routine, "Unknown routine ${call.routine}.")
+                reportError("Unknown routine ${call.routine}.")
+                    .withPositionOf(call.routine)
                 return
             }
 
@@ -145,14 +149,16 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
                 val structureType = this.storage.computedType()
                 val memberType = structureType.getMemberType(this.member.name)
                 if (memberType == null) {
-                    reportError(this.member, "Type does not have a member named ${this.member}.")
+                    reportError("Type does not have a member named ${this.member}.")
+                        .withPositionOf(this.member)
                     Type.Variable()
                 } else memberType
             }
 
             is Syntax.NamedStorage -> when (val type = routine.localEnvironment.getVariable(this.name)) {
                 null -> {
-                    reportError(this, "Unknown variable ${this.name}")
+                    reportError("Unknown variable ${this.name}")
+                        .withPositionOf(this)
                     Type.Variable()
                 }
 
@@ -255,7 +261,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
         val message = messageHints.reduce { a, b ->
             "$a${System.lineSeparator()} cause: $b"
         }
-        reportError(position, message)
+        reportError(message).withPositionOf(position)
     }
 
     private fun Type.isInstantiated(): Boolean = TypeIsInstantiated.evaluate(this)

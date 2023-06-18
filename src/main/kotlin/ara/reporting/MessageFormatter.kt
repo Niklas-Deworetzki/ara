@@ -1,5 +1,6 @@
 package ara.reporting
 
+import ara.position.Range
 import ara.position.SourceMarker
 import org.fusesource.jansi.Ansi
 import java.io.IOException
@@ -22,6 +23,9 @@ object MessageFormatter {
         val linesBuffer: MutableList<String> = ArrayList()
         linesBuffer.add(messageHeader(message))
         linesBuffer.addAll(messageLocation(message))
+        for (info in message.additionalInfo) {
+            linesBuffer.addAll(messageAdditionalInfo(message, info))
+        }
         return linesBuffer
     }
 
@@ -35,6 +39,18 @@ object MessageFormatter {
 
     private fun messageLocation(message: Message): List<String> {
         val range = message.range ?: return emptyList()
+        return formatRange(message, range)
+    }
+
+    private fun messageAdditionalInfo(message: Message, info: Message.AdditionalInfo): List<String> {
+        val lines = mutableListOf(info.description)
+        if (info.range != null) {
+            lines.addAll(formatRange(message, info.range))
+        }
+        return lines
+    }
+
+    private fun formatRange(message: Message, range: Range): List<String> {
         val filename = range.input.filename()
 
         return try {

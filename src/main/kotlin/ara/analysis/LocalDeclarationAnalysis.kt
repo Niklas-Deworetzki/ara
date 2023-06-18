@@ -46,7 +46,8 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
             if (!encounteredNames.add(parameter.name)) {
                 encounteredConflicts++
 
-                reportError(parameter, "Parameter ${parameter.name} was declared multiple times.")
+                reportError("Parameter ${parameter.name} was declared multiple times.")
+                    .withPositionOf(parameter)
             } else {
                 currentScope.declareVariable(parameter.name)
             }

@@ -2,11 +2,10 @@ package ara.input
 
 import ara.Direction
 import ara.analysis.Analysis
-import ara.syntax.Syntax
 import ara.input.Token.Type.*
 import ara.reporting.Message
+import ara.syntax.Syntax
 import ara.utils.Either
-import org.fusesource.jansi.Ansi
 
 class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
     private companion object {
@@ -415,8 +414,10 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
         }
     }
 
+    // TODO: Error reporting could be improved by providing boundaries in the parser for the currently parsed construct.
     private fun syntaxError(expected: String): Nothing {
-        val message = Message(Ansi.Color.RED, "Syntax error", "Expected $expected.", lookahead.range)
+        val message = Message.error("Syntax error", "Expected $expected.")
+            .withPosition(lookahead.range)
         reportError(message)
         throw RecoverableSyntaxError()
     }

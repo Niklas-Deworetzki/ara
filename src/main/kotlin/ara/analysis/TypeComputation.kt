@@ -28,7 +28,8 @@ class TypeComputation(
         environment.getType(name) ?: reportUnknownType(name)
 
     private fun reportUnknownType(name: Syntax.Identifier): Type.Variable {
-        reportError(name, "Unknown type $name.")
+        reportError("Unknown type $name.")
+            .withPositionOf(name)
         return Type.Variable()
     }
 }

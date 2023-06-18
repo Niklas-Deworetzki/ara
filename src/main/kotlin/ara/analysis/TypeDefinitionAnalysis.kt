@@ -29,7 +29,8 @@ class TypeDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Uni
 
     private fun declareType(definition: Syntax.TypeDefinition) {
         if (!program.environment.declareType(definition.name)) {
-            reportError(definition, "Type ${definition.name} is defined multiple times.")
+            reportError("Type ${definition.name} is defined multiple times.")
+                .withPositionOf(definition)
         }
     }
 
@@ -46,10 +47,12 @@ class TypeDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Uni
                     Unit
 
                 is TypeUnification.Error.RecursiveType ->
-                    reportError(definition.name, "Unable to construct infinite type ${definition.name}.")
+                    reportError("Unable to construct infinite type ${definition.name}.")
+                        .withPositionOf(definition.name)
 
                 else ->
-                    reportError(definition.name, "Unable declare type ${definition.name}.")
+                    reportError("Unable declare type ${definition.name}.")
+                        .withPositionOf(definition.name)
             }
         }
     }

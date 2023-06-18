@@ -34,10 +34,16 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
             val conflicts = ConflictsFinder(routine).getConflicts()
             for (variable in conflicts.keys.sorted()) {
                 val conflict = conflicts[variable]!!
-                reportError(
-                    (conflict.initializers + conflict.finalizers).first(),
-                    "Variable $variable has conflicting initializers."
-                )
+
+                val message = reportError("Variable $variable has conflicting initializers and finalizers.")
+                val definitions = listOf(
+                    conflict.initializers.map { it to "initializer" },
+                    conflict.finalizers.map { it to "finalizer" }
+                ).flatten().sortedBy { it.first }
+
+                for ((position, definition) in definitions) {
+                    message.withAdditionalInfo(position, "A potential cause might be the $definition here:")
+                }
             }
         }
     }

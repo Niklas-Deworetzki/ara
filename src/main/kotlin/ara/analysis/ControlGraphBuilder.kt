@@ -51,7 +51,8 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
 
         private fun startBlock() {
             if (currentBuffer != null) {
-                reportError(currentInstruction, "Cannot create a new block before the current one is finished.")
+                reportError("Cannot create a new block before the current one is finished.")
+                    .withPositionOf(currentInstruction)
             } else {
                 currentBuffer = mutableListOf()
             }
@@ -59,7 +60,8 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
 
         private fun buildBlock() {
             if (currentBuffer == null) {
-                reportError(currentInstruction, "Instruction must be part of a block.")
+                reportError("Instruction must be part of a block.")
+                    .withPositionOf(currentInstruction)
             } else {
                 currentBuffer!!.add(currentInstruction)
             }
@@ -92,7 +94,8 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
         private fun indexFwLabels(block: Block) {
             for (label in block.entryLabels()) {
                 if (successors.containsKey(label)) {
-                    reportError(label, "Multiple definitions of $label in an entry point.")
+                    reportError("Multiple definitions of $label in an entry point.")
+                        .withPositionOf(label)
                 } else {
                     successors[label] = block
                 }
@@ -102,7 +105,8 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
         private fun indexBwLabels(block: Block) {
             for (label in block.exitLabels()) {
                 if (predecessors.containsKey(label)) {
-                    reportError(label, "Multiple definitions of $label in an exit point.")
+                    reportError("Multiple definitions of $label in an exit point.")
+                        .withPositionOf(label)
                 } else {
                     predecessors[label] = block
                 }

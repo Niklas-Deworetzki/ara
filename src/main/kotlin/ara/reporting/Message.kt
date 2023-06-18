@@ -44,7 +44,7 @@ private constructor(
         return this
     }
 
-    fun withAdditionalInfo(range: Range? = null, description: String): Message {
+    fun withAdditionalInfo(description: String, range: Range? = null): Message {
         this.additionalInfo.add(AdditionalInfo(description, range))
         return this
     }

@@ -3,67 +3,34 @@ package ara.analysis.live
 import ara.Direction
 import ara.analysis.LivenessAnalysis.Companion.liveFromParameterList
 import ara.analysis.dataflow.DataflowProblem
+import ara.analysis.live.LivenessState.Companion.meet
 import ara.control.Block
 import ara.storage.ResourceAllocation.variablesCreated
 import ara.storage.ResourceAllocation.variablesDestroyed
 import ara.syntax.Syntax
 
-class LivenessProblem(val routine: Syntax.RoutineDefinition) :
+class LivenessProblem(val routine: Syntax.RoutineDefinition, direction: Direction = Direction.FORWARD) :
     DataflowProblem<Block, LivenessDescriptor>(
         routine.graph.nodes,
         routine.graph::getPredecessors,
         routine.graph::getSuccessors,
-        Direction.FORWARD
+        direction
     ) {
 
-    override fun initialInValue(node: Block): LivenessDescriptor = when (node) {
-        routine.graph.beginBlock -> routine.liveFromParameterList(routine.inputParameters)
-        else -> LivenessDescriptor(routine)
-    }
+    override fun initialInValue(node: Block): LivenessDescriptor =
+        if (direction == Direction.FORWARD && node == routine.graph.beginBlock)
+            routine.liveFromParameterList(routine.inputParameters)
+        else
+            LivenessDescriptor(routine)
 
     override fun initialOutValue(node: Block): LivenessDescriptor =
-        LivenessDescriptor(routine)
+        if (direction == Direction.BACKWARD && node == routine.graph.endBlock)
+            routine.liveFromParameterList(routine.outputParameters)
+        else
+            LivenessDescriptor(routine)
 
-    private fun combine(a: LivenessState, b: LivenessState): LivenessState = when (a) {
-        LivenessState.Unknown ->
-            b
-
-        is LivenessState.Initialized -> when (b) {
-            is LivenessState.Initialized ->
-                LivenessState.Initialized(a.initializers + b.initializers)
-
-            is LivenessState.Finalized ->
-                LivenessState.Conflict(a.initializers, b.finalizers)
-
-            else ->
-                combine(b, a)
-        }
-
-        is LivenessState.Finalized -> when (b) {
-            is LivenessState.Finalized ->
-                LivenessState.Finalized(a.finalizers + b.finalizers)
-
-            is LivenessState.Initialized ->
-                LivenessState.Conflict(b.initializers, a.finalizers)
-
-            else ->
-                combine(b, a)
-        }
-
-        is LivenessState.Conflict -> when (b) {
-            is LivenessState.Conflict ->
-                LivenessState.Conflict(a.initializers + b.initializers, a.finalizers + b.finalizers)
-
-            is LivenessState.Initialized ->
-                LivenessState.Conflict(a.initializers + b.initializers, a.finalizers)
-
-            is LivenessState.Finalized ->
-                LivenessState.Conflict(a.initializers, a.finalizers + b.finalizers)
-
-            else ->
-                combine(b, a)
-        }
-    }
+    private fun combine(a: LivenessState, b: LivenessState): LivenessState =
+        a meet b
 
     override fun combine(a: LivenessDescriptor, b: LivenessDescriptor): LivenessDescriptor {
         val result = LivenessDescriptor(routine)

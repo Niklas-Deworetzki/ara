@@ -1,10 +1,10 @@
 package ara.analysis
 
-import ara.analysis.dataflow.DataflowSolution
 import ara.analysis.dataflow.DataflowSolver.Companion.solve
 import ara.analysis.live.LivenessDescriptor
 import ara.analysis.live.LivenessProblem
-import ara.control.Block
+import ara.analysis.live.LivenessState
+import ara.analysis.live.LivenessState.Companion.meet
 import ara.storage.ResourcePath
 import ara.syntax.Syntax
 
@@ -14,25 +14,79 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
     override fun runAnalysis() {
         val routines = program.definitions.filterIsInstance<Syntax.RoutineDefinition>()
         for (routine in routines) {
-            val dataflowSolution = LivenessProblem(routine).solve()
-            for (block in routine.graph) {
-                BlockLevelAnalysis(dataflowSolution, block).run()
+            includeAnalysis(RoutineLivenessAnalysis(routine))
+        }
+    }
+
+    class RoutineLivenessAnalysis(val routine: Syntax.RoutineDefinition) : Analysis<Unit>() {
+        init {
+            routine.liveness = LivenessProblem(routine).solve()
+        }
+
+        override fun runAnalysis() {
+            reportConflicts()
+            // TODO: Verify that only output parameters are live at end of routine
+            // TODO: Verify initialization and finalization in every block.
+        }
+
+        private fun reportConflicts() {
+            val conflicts = ConflictsFinder(routine).getConflicts()
+            for (variable in conflicts.keys.sorted()) {
+                val conflict = conflicts[variable]!!
+                reportError(
+                    (conflict.initializers + conflict.finalizers).first(),
+                    "Variable $variable has conflicting initializers."
+                )
             }
         }
     }
 
-    private inner class BlockLevelAnalysis(
-        liveness: DataflowSolution<Block, LivenessDescriptor>,
-        val block: Block
-    ) : Runnable {
-        val currentState = liveness.getIn(block).copy()
+    class ConflictsFinder(val routine: Syntax.RoutineDefinition) {
+        private val detectedConflicts = mutableMapOf<Syntax.Identifier, LivenessState>()
+        private val variables = routine.localEnvironment.variables.map { it.key }
 
-        override fun run() = println(currentState)
+        private fun initState() {
+            for (variable in variables) {
+                detectedConflicts[variable] = LivenessState.Unknown
+            }
+        }
+
+        private fun updateConflict(
+            variable: Syntax.Identifier,
+            conflict: LivenessState.Conflict
+        ) {
+            detectedConflicts[variable] = detectedConflicts[variable]!! meet conflict
+        }
+
+        private fun detectConflicts() {
+            for (block in routine.graph) {
+                val liveAtEnd = routine.liveness.getOut(block)
+
+                for (variable in variables) {
+                    val path = ResourcePath.ofIdentifier(variable)
+                    val potentialConflict = liveAtEnd[path]
+
+                    if (potentialConflict is LivenessState.Conflict) {
+                        updateConflict(variable, potentialConflict)
+                    }
+                }
+            }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        private fun extractConflictsFromState(): Map<Syntax.Identifier, LivenessState.Conflict> {
+            return detectedConflicts.filterValues { it is LivenessState.Conflict }
+                    as Map<Syntax.Identifier, LivenessState.Conflict>
+        }
+
+        fun getConflicts(): Map<Syntax.Identifier, LivenessState.Conflict> {
+            initState()
+            detectConflicts()
+            return extractConflictsFromState()
+        }
     }
 
-
     companion object {
-
         fun Syntax.RoutineDefinition.liveFromParameterList(parameters: List<Syntax.Parameter>): LivenessDescriptor {
             val live = LivenessDescriptor(this)
             for (parameter in parameters) {
@@ -40,6 +94,5 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
             }
             return live
         }
-
     }
 }

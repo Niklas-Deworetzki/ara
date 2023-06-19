@@ -4,13 +4,20 @@ import ara.position.Range
 
 sealed interface LivenessState {
 
+    val initializers: Set<Range>
+        get() = emptySet()
+
+    val finalizers: Set<Range>
+        get() = emptySet()
+
+
     object Unknown : LivenessState
 
-    data class Initialized(val initializers: Set<Range>) : LivenessState
+    data class Initialized(override val initializers: Set<Range>) : LivenessState
 
-    data class Finalized(val finalizers: Set<Range>) : LivenessState
+    data class Finalized(override val finalizers: Set<Range>) : LivenessState
 
-    data class Conflict(val initializers: Set<Range>, val finalizers: Set<Range>) : LivenessState
+    data class Conflict(override val initializers: Set<Range>, override val finalizers: Set<Range>) : LivenessState
 
     companion object {
         infix fun LivenessState.meet(other: LivenessState): LivenessState =

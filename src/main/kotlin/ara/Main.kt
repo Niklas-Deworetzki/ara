@@ -23,9 +23,11 @@ object Main {
 
         analysis.runAnalysis()
         if (analysis.hasReportedErrors) {
-            analysis.reportedErrors
-                .map(MessageFormatter::format)
-                .forEach(::println)
+            for (error in analysis.reportedErrors) {
+                println(MessageFormatter.format(error))
+                println()
+            }
+
             return false
         }
         return true

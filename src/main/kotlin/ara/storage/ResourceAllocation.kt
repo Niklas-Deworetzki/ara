@@ -20,23 +20,29 @@ object ResourceAllocation {
             null
     }
 
-    fun Syntax.Instruction.variablesCreated(): Collection<ResourcePath> = when (this) {
+    fun Syntax.Instruction.variablesCreated(): Collection<ResourcePath> =
+        resourcesCreated().mapNotNull { it.asResourcePath() }
+
+    fun Syntax.Instruction.resourcesCreated(): Collection<Syntax.ResourceExpression> = when (this) {
         is Syntax.Assignment ->
-            setOfNotNull(this.dst.asResourcePath())
+            listOf(this.dst)
 
         is Syntax.Call ->
-            this.dstList.mapNotNull { it.asResourcePath() }
+            this.dstList
 
         else ->
             emptyList()
     }
 
-    fun Syntax.Instruction.variablesDestroyed(): Collection<ResourcePath> = when (this) {
+    fun Syntax.Instruction.variablesDestroyed(): Collection<ResourcePath> =
+        this.resourcesDestroyed().mapNotNull { it.asResourcePath() }
+
+    fun Syntax.Instruction.resourcesDestroyed(): Collection<Syntax.ResourceExpression> = when (this) {
         is Syntax.Assignment ->
-            setOfNotNull(this.src.asResourcePath())
+            listOf(this.src)
 
         is Syntax.Call ->
-            this.srcList.mapNotNull { it.asResourcePath() }
+            this.srcList
 
         else ->
             emptyList()
@@ -47,7 +53,7 @@ object ResourceAllocation {
             listOfNotNull(this.lhs.asResourcePath(), this.rhs.asResourcePath())
 
         is Syntax.ArithmeticValue ->
-            setOfNotNull(this.value.asResourcePath())
+            listOfNotNull(this.value.asResourcePath())
     }
 
     fun Syntax.ConditionalExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {

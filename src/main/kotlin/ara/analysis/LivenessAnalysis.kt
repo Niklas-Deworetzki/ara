@@ -5,7 +5,13 @@ import ara.analysis.live.LivenessDescriptor
 import ara.analysis.live.LivenessProblem
 import ara.analysis.live.LivenessState
 import ara.analysis.live.LivenessState.Companion.meet
+import ara.control.Block
 import ara.position.Range
+import ara.reporting.Message.Companion.quoted
+import ara.storage.ResourceAllocation.asResourcePath
+import ara.storage.ResourceAllocation.asResourcePaths
+import ara.storage.ResourceAllocation.resourcesCreated
+import ara.storage.ResourceAllocation.resourcesDestroyed
 import ara.storage.ResourcePath
 import ara.syntax.Syntax
 import ara.syntax.extensions.isEmpty
@@ -32,7 +38,7 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
                 includeAnalysis(CleanAnalysis(routine))
 
                 for (block in routine.graph) {
-                    includeAnalysis(BlockLevelLivenessAnalysis())
+                    includeAnalysis(BlockLevelLivenessAnalysis(routine, block))
                 }
             }
         }
@@ -56,9 +62,89 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
         }
     }
 
-    class BlockLevelLivenessAnalysis() : Analysis<Unit>() {
+    class BlockLevelLivenessAnalysis(private val routine: Syntax.RoutineDefinition, private val block: Block) :
+        Analysis<Unit>() {
+        private val currentState = routine.liveness.getIn(block)
+
         override fun runAnalysis() {
-            // TODO: Verify initialization and finalization of instructions in every block.
+            for (instruction in block) {
+                instruction.resourcesDestroyed().forEach(::finalizeOrReport)
+                verifyUses(instruction)
+                instruction.resourcesCreated().forEach(::initializeOrReport)
+            }
+        }
+
+        private fun initializeOrReport(expression: Syntax.ResourceExpression) {
+            val resource = expression.asResourcePath()
+            if (resource != null) {
+                val state = currentState[resource]
+                if (state !is LivenessState.Finalized) {
+                    val error =
+                        reportError("Cannot initialize ${resource.quoted()} as it has already been initialized.")
+                            .withPositionOf(expression)
+
+                    for (initializer in state.initializers) {
+                        error.withAdditionalInfo("Potential causes include the initializer defined here:", initializer)
+                    }
+
+                } else {
+                    currentState += resource to expression.range
+                }
+            }
+        }
+
+        private fun finalizeOrReport(expression: Syntax.ResourceExpression) {
+            val resource = expression.asResourcePath()
+            if (resource != null) {
+                val state = currentState[resource]
+                if (state !is LivenessState.Initialized) {
+                    val error =
+                        reportError("Cannot finalize ${resource.quoted()} as it has already been finalized.")
+                            .withPositionOf(expression)
+
+                    for (initializer in state.initializers) {
+                        error.withAdditionalInfo("Potential causes include the finalizer defined here:", initializer)
+                    }
+
+                } else {
+                    currentState -= resource to expression.range
+                }
+            }
+        }
+
+        private fun verifyUse(resource: ResourcePath, anchor: Syntax) {
+            val state = currentState[resource]
+            if (state !is LivenessState.Initialized) {
+                val error = reportError("Cannot use ${resource.quoted()} as it has not been initialized.")
+                    .withPositionOf(anchor)
+
+                for (finalizer in state.finalizers) {
+                    error.withAdditionalInfo("This is potentially caused by the finalizer defined here:", finalizer)
+                }
+            }
+        }
+
+        private fun verifyUses(instruction: Syntax.Instruction) {
+            when (instruction) {
+                is Syntax.Assignment -> {
+                    if (instruction.arithmetic != null) {
+                        val resources = instruction.arithmetic.value.asResourcePaths().toSet()
+                        for (resource in resources) {
+                            verifyUse(resource, instruction.arithmetic)
+                        }
+                    }
+                }
+
+                is Syntax.Conditional -> {
+                    val resources = instruction.condition.asResourcePaths().toSet()
+                    for (resource in resources) {
+                        verifyUse(resource, instruction.condition)
+                    }
+                }
+
+                else ->
+                    Unit
+            }
         }
     }
 
@@ -72,23 +158,27 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
             val allVariables = routine.localEnvironment.variableNames.toSet()
             val outputVariables = routine.outputParameters.map { it.name }.toSet()
 
-            for ((name, finalizers) in variablesNotInitialized(outputVariables)) {
-                val message = "Variable $name is not initialized at the end of routine."
-                if (finalizers.isNotEmpty()) {
-                    for (finalizer in finalizers) {
+            val notInitialized = variablesNotInitialized(outputVariables)
+            reportVariables(notInitialized, "initialized", "finalizer")
+            val notFinalized = variablesNotFinalized(allVariables - outputVariables)
+            reportVariables(notFinalized, "finalized", "initializer")
+        }
+
+        private fun reportVariables(
+            variables: Iterable<Pair<Syntax.Identifier, Set<Range>>>,
+            expectedState: String,
+            cause: String
+        ) {
+            for ((name, potentialCausePositions) in variables) {
+                val message = "Variable $name is not $expectedState at the end of routine."
+
+                if (potentialCausePositions.isNotEmpty()) {
+                    for (potentialCausePosition in potentialCausePositions) {
                         reportError(message)
-                            .withAdditionalInfo("A potential cause for this might be the finalizer here:", finalizer)
-                    }
-                } else {
-                    reportError(message).withPositionOf(name)
-                }
-            }
-            for ((name, initializers) in variablesNotFinalized(allVariables - outputVariables)) {
-                val message = "Variable $name is not finalized at the end of routine."
-                if (initializers.isNotEmpty()) {
-                    for (initializer in initializers) {
-                        reportError(message)
-                            .withAdditionalInfo("A potential cause for this might be the initializer here:", initializer)
+                            .withAdditionalInfo(
+                                "A potential cause for this might be the $cause here:",
+                                potentialCausePosition
+                            )
                     }
                 } else {
                     reportError(message).withPositionOf(name)
@@ -97,20 +187,20 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
         }
 
         private fun variablesNotInitialized(variables: Set<Syntax.Identifier>) =
-            variablesNotInState<LivenessState.Initialized, LivenessState.Finalized>(variables) { it.finalizers }
+            variablesNotInState<LivenessState.Initialized>(variables) { it.finalizers }
 
         private fun variablesNotFinalized(variables: Set<Syntax.Identifier>) =
-            variablesNotInState<LivenessState.Finalized, LivenessState.Initialized>(variables) { it.initializers }
+            variablesNotInState<LivenessState.Finalized>(variables) { it.initializers }
 
-        private inline fun <reified ExpectedState : LivenessState, reified InvalidState : LivenessState> variablesNotInState(
+        private inline fun <reified ExpectedState : LivenessState> variablesNotInState(
             variables: Set<Syntax.Identifier>,
-            extractor: (InvalidState) -> Set<Range>
+            extractor: (LivenessState) -> Set<Range>
         ): Iterable<Pair<Syntax.Identifier, Set<Range>>> {
             val results = mutableListOf<Pair<Syntax.Identifier, Set<Range>>>()
             for (variable in variables) {
                 val finalState = liveAtEndOfRoutine[ResourcePath.ofIdentifier(variable)]
                 if (finalState !is ExpectedState)
-                    results.add(variable to extractor(finalState as InvalidState))
+                    results.add(variable to extractor(finalState))
             }
             return results.sortedBy { it.second.minOrNull() }
         }

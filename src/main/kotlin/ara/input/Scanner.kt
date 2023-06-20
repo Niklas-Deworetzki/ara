@@ -28,12 +28,9 @@ class Scanner(private val input: InputSource) : Closeable {
         }
     }
 
-    private fun revert(vararg additionalChars: Char) {
-        currentOffset -= additionalChars.size + 1
+    private fun revert() {
+        currentOffset -= 1
         buffer.push(currentCharCode)
-        for (char in additionalChars.reversed()) {
-            buffer.push(char.code)
-        }
     }
 
     private fun createToken(type: Token.Type, value: String? = null): Token {
@@ -51,7 +48,6 @@ class Scanner(private val input: InputSource) : Closeable {
             '+' to OPERATOR_ADD,
             '^' to OPERATOR_XOR,
             '*' to OPERATOR_MUL,
-            '/' to OPERATOR_DIV,
             '%' to OPERATOR_MOD,
             '(' to PAREN_L,
             ')' to PAREN_R,
@@ -61,6 +57,9 @@ class Scanner(private val input: InputSource) : Closeable {
 
         private fun representsIntegerDigit(code: Int): Boolean =
             code >= '0'.code && code <= '9'.code
+
+        private fun isLineBreak(code: Int): Boolean =
+            code == '\t'.code || code == '\n'.code
     }
 
     private fun consumeWhitespace(): Boolean {
@@ -71,26 +70,10 @@ class Scanner(private val input: InputSource) : Closeable {
         return currentOffset > startOffset
     }
 
-    private fun consumeComment(): Boolean {
-        if (currentCharCode != '/'.code) {
-            return false
-        }
-
-        advance()
-        if (currentCharCode != '/'.code) {
-            revert('/')
-            return false
-        }
-
-        do {
-            advance()
-        } while (currentCharCode != '\n'.code)
-        return true
-    }
-
     fun nextToken(): Token {
         advance()
-        while (consumeComment() or consumeWhitespace()) {
+
+        while (consumeWhitespace()) {
             // Repeat until nothing is left to consume.
         }
 
@@ -120,6 +103,9 @@ class Scanner(private val input: InputSource) : Closeable {
                 parseContinuousToken(UNKNOWN, '=' to OPERATOR_NEQ)
 
             else -> when {
+                currentChar == '/' ->
+                    parseDivOrComment()
+
                 Character.isJavaIdentifierStart(currentChar) ->
                     consumeCharacters(IDENTIFIER, Character::isJavaIdentifierPart)
 
@@ -130,6 +116,14 @@ class Scanner(private val input: InputSource) : Closeable {
                     createToken(UNKNOWN)
             }
         }
+    }
+
+    private fun parseDivOrComment(): Token {
+        advance()
+        return if (currentCharCode == '/'.code) {
+            advance()
+            consumeCharacters(COMMENT, ::isLineBreak)
+        } else createToken(OPERATOR_DIV)
     }
 
     private fun parseContinuousToken(

@@ -8,6 +8,7 @@ data class Token(val type: Type, val value: String? = null) {
     enum class Type {
         IDENTIFIER,
         INTEGER,
+        COMMENT,
 
         ROUTINE,
         TYPE,

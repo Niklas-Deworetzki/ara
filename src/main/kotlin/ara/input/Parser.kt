@@ -44,7 +44,15 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
 
     private fun next() {
         currentToken = lookahead
-        lookahead = scanner.nextToken()
+        lookahead = nextValidScannerToken()
+    }
+
+    private fun nextValidScannerToken(): Token {
+        var token: Token
+        do {
+            token = scanner.nextToken()
+        } while (token.type == COMMENT)
+        return token
     }
 
     private fun <R : Syntax> parse(parser: () -> R): R {

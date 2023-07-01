@@ -29,8 +29,8 @@ class Interpreter(val program: Syntax.Program) : Runnable {
         try {
             val inputValues = entryPoint.inputParameterTypes.map { Value.defaultValueForType(it) }
             val outputValues = executeRoutine(Direction.FORWARD, entryPoint, inputValues)
-            combineWith(entryPoint.outputParameters, outputValues) { name, value ->
-                println("$name = $value")
+            combineWith(entryPoint.outputParameters.map { it.name }, outputValues) { parameter, value ->
+                println("${parameter.name} = $value")
             }
         } catch (exception: Exception) {
             throw NativeException.withStackTraceFrom(exception, callStack, currentInstruction.range)

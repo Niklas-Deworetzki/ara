@@ -1,14 +1,24 @@
 package ara.interpreter
 
 import ara.types.Type
-import ara.utils.zipToMap
 import ara.types.Type.Algebra.Companion.evaluate
+import ara.utils.zipToMap
 
 sealed interface Value {
 
-    data class Integer(val value: Int) : Value
+    data class Integer(val value: Int) : Value {
+        override fun toString(): String =
+            value.toString()
+    }
 
-    data class Structure(val members: Map<String, Value>) : Value
+    data class Structure(val members: Map<String, Value>) : Value {
+        override fun toString(): String = when {
+            members.isEmpty() -> "{ }"
+            else -> members.asIterable().joinToString(separator = ", ", prefix = "{ ", postfix = " }") {
+                "${it.key} = ${it.value}"
+            }
+        }
+    }
 
     companion object {
         val ZERO: Value = Integer(0)

@@ -3,7 +3,7 @@ package ara.storage
 import ara.types.Environment
 import ara.types.Type
 import ara.types.Type.Algebra.Companion.evaluate
-import ara.utils.Collections.zipToMap
+import ara.utils.zipToMap
 import java.util.Deque
 import java.util.LinkedList
 

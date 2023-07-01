@@ -1,6 +1,6 @@
 package ara.storage
 
-import ara.utils.Collections.combineWith
+import ara.utils.combineWith
 
 internal class StorageDescriptorFormatter<V>(private val descriptor: StorageDescriptor<V>) {
     private fun formatDescriptorEntry(

@@ -10,7 +10,7 @@ import ara.types.Type
 import ara.types.Type.Algebra.Companion.evaluate
 import ara.types.TypeUnification
 import ara.types.TypeUnification.unify
-import ara.utils.Collections.combineWith
+import ara.utils.combineWith
 
 class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
 

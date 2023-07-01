@@ -6,7 +6,7 @@ import ara.control.Block.Companion.isEndOfBlock
 import ara.control.ControlGraph
 import ara.control.ControlGraphVisualizer.Companion.asGraphString
 import ara.syntax.Syntax
-import ara.utils.Collections.sublist
+import ara.utils.sublist
 
 private typealias InstructionBuffer = MutableList<Syntax.Instruction>
 

@@ -5,7 +5,6 @@ import ara.reporting.Message.Companion.quoted
 import ara.storage.StorageDescriptor
 import ara.syntax.Syntax
 import java.util.*
-import java.util.ArrayDeque
 
 class StackFrame(val direction: Direction, val routine: Syntax.RoutineDefinition, val caller: Syntax.Call? = null) :
     StorageDescriptor<Value>(fromEnvironment(routine.localEnvironment, Value.ZERO)) {

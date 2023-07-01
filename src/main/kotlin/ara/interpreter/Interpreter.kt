@@ -2,7 +2,6 @@ package ara.interpreter
 
 import ara.Direction
 import ara.control.Block
-import ara.interpreter.StackTraceFactory.fillInStackTrace
 import ara.storage.ResourceAllocation.asResourcePath
 import ara.storage.ResourcePath
 import ara.syntax.Syntax
@@ -25,7 +24,27 @@ class Interpreter(val program: Syntax.Program) : Runnable {
         get() = currentStackFrame.routine
 
     override fun run() {
-        TODO("Start execution of main routine")
+        val entryPoint = findEntryPoint()
+
+        try {
+            val inputValues = entryPoint.inputParameterTypes.map { Value.defaultValueForType(it) }
+            val outputValues = executeRoutine(Direction.FORWARD, entryPoint, inputValues)
+            combineWith(entryPoint.outputParameters, outputValues) { name, value ->
+                println("$name = $value")
+            }
+        } catch (exception: Exception) {
+            throw NativeException.withStackTraceFrom(exception, callStack, currentInstruction.range)
+        }
+    }
+
+    private fun findEntryPoint(): Syntax.RoutineDefinition {
+        val entryPoint = program.definitions
+            .filterIsInstance<Syntax.RoutineDefinition>()
+            .find { it.name == MAIN_ROUTINE_NAME }
+        internalAssertion(entryPoint != null) {
+            "Program's entry point $MAIN_ROUTINE_NAME is not present."
+        }
+        return entryPoint
     }
 
     private lateinit var currentInstruction: Syntax.Instruction
@@ -168,7 +187,7 @@ class Interpreter(val program: Syntax.Program) : Runnable {
 
             if (expression.operator in setOf(Syntax.BinaryOperator.DIV, Syntax.BinaryOperator.MOD)) {
                 if (rhs == 0) {
-                    raise(ArithmeticException("Division by 0!"), expression.rhs)
+                    throw ArithmeticException("Division by 0!")
                 }
             }
 
@@ -233,19 +252,16 @@ class Interpreter(val program: Syntax.Program) : Runnable {
         }
     }
 
-    private fun ensureReversibility(condition: Boolean, lazyMessage: () -> String) {
-        if (!condition) {
-            raise(ReversibilityViolation(lazyMessage()))
-        }
-    }
-
-    private fun <E : Throwable> raise(exception: E, origin: Syntax? = null): Nothing {
-        fillInStackTrace(exception, callStack.toList(), (origin ?: currentInstruction).range)
-        throw exception
-    }
-
-    @OptIn(ExperimentalContracts::class)
     companion object {
+        val MAIN_ROUTINE_NAME = Syntax.Identifier("main")
+
+        private fun ensureReversibility(condition: Boolean, lazyMessage: () -> String) {
+            if (!condition) {
+                throw ReversibilityViolation(lazyMessage())
+            }
+        }
+
+        @OptIn(ExperimentalContracts::class)
         private fun internalAssertion(condition: Boolean, lazyMessage: () -> String) {
             contract {
                 returns() implies condition

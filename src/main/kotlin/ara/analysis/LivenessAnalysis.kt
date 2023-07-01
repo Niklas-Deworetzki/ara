@@ -23,9 +23,6 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
         val routines = program.definitions.filterIsInstance<Syntax.RoutineDefinition>()
         for (routine in routines) {
             routine.liveness = LivenessProblem(routine).solve()
-            for (block in routine.graph) {
-                println(routine.liveness.getOut(block))
-            }
             includeAnalysis(RoutineLivenessAnalysis(routine))
         }
     }

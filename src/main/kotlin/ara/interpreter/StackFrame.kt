@@ -1,11 +1,16 @@
 package ara.interpreter
 
+import ara.Direction
 import ara.reporting.Message.Companion.quoted
 import ara.storage.StorageDescriptor
 import ara.syntax.Syntax
+import java.util.*
+import java.util.ArrayDeque
 
-class StackFrame(val routine: Syntax.RoutineDefinition, val caller: Syntax.Call? = null) :
+class StackFrame(val direction: Direction, val routine: Syntax.RoutineDefinition, val caller: Syntax.Call? = null) :
     StorageDescriptor<Value>(fromEnvironment(routine.localEnvironment, Value.ZERO)) {
+
+    val queuedInstructions: Queue<Syntax.Instruction> = ArrayDeque()
 
     override fun setNodeValue(node: DescriptorNode<Value>, value: Value) {
         when (node) {

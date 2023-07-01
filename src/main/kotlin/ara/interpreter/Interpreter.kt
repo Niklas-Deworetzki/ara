@@ -2,6 +2,7 @@ package ara.interpreter
 
 import ara.Direction
 import ara.control.Block
+import ara.interpreter.StackTraceFactory.fillInStackTrace
 import ara.storage.ResourceAllocation.asResourcePath
 import ara.storage.ResourcePath
 import ara.syntax.Syntax
@@ -200,7 +201,7 @@ class Interpreter(val program: Syntax.Program) : Runnable {
     private fun evaluate(expression: Syntax.ResourceExpression): Value = when (expression) {
         is Syntax.IntegerLiteral -> Value.Integer(expression.value)
         is Syntax.TypedStorage -> evaluate(expression.storage)
-        is Syntax.NamedStorage -> currentStackFrame[ResourcePath.ofIdentifier(expression.name)]
+        is Syntax.NamedStorage -> currentStackFrame[expression.asResourcePath()!!]
         is Syntax.MemberAccess -> {
             val structure = evaluate(expression.storage).asStructure()
             val memberValue = structure[expression.member.name]
@@ -239,7 +240,8 @@ class Interpreter(val program: Syntax.Program) : Runnable {
     }
 
     private fun <E : Throwable> raise(exception: E, origin: Syntax? = null): Nothing {
-        TODO("Move into RoutineExecutor for information about currently executed instruction.")
+        fillInStackTrace(exception, callStack.toList(), (origin ?: currentInstruction).range)
+        throw exception
     }
 
     @OptIn(ExperimentalContracts::class)

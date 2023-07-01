@@ -1,5 +1,6 @@
 package ara.storage
 
+import ara.reporting.Message.Companion.quoted
 import ara.types.Environment
 import ara.types.Type
 import ara.types.Type.Algebra.Companion.evaluate
@@ -62,10 +63,10 @@ protected constructor(val root: InnerNode<V>) {
             when (currentNode) {
                 is InnerNode ->
                     currentNode = currentNode.data[path[index]]
-                        ?: throw NoSuchElementException("No key '${path.subPath(index)}' in descriptor tree.")
+                        ?: throw NoSuchElementException("No key ${path.subPath(index).quoted()} in descriptor tree.")
 
                 is LeafNode ->
-                    throw NoSuchElementException("No key '${path.subPath(index)}' in descriptor tree.")
+                    throw NoSuchElementException("No key ${path.subPath(index).quoted()} in descriptor tree.")
             }
         }
         return currentNode

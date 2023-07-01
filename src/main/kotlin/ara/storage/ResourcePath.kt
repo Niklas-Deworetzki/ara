@@ -12,7 +12,7 @@ private constructor(private val path: List<String>) {
         path[index]
 
     fun subPath(indexIncluded: Int): ResourcePath =
-        ResourcePath(path.subList(0, indexIncluded))
+        ResourcePath(path.subList(0, indexIncluded + 1))
 
     fun appended(accessor: Syntax.Identifier): ResourcePath =
         ResourcePath(path + accessor.name)

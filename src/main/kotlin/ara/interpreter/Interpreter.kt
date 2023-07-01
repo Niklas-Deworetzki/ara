@@ -66,10 +66,10 @@ class Interpreter(val program: Syntax.Program) : Runnable {
                 executeInstruction(currentInstruction)
             }
 
-            return finalizeOutputs()
+            finalizeOutputs()
         }
 
-    private inline fun <V> withStackFrame(frame: StackFrame, action: () -> V): V {
+    private inline fun <V> withStackFrame(frame: StackFrame, crossinline action: () -> V): V {
         callStack.push(frame)
         val result = action()
         callStack.pop()

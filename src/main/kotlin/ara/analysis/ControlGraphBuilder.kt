@@ -80,14 +80,12 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
         private val predecessors = mutableMapOf<Syntax.Identifier, Block>()
 
         fun construct(): ControlGraph {
-            if (blocks.size > 1) {
-                indexBwLabels(blocks.first())
-                for (block in sublist(blocks, 1, 1)) {
-                    indexFwLabels(block)
-                    indexBwLabels(block)
-                }
-                indexFwLabels(blocks.last())
+            indexBwLabels(blocks.first())
+            for (block in sublist(blocks, 1, 1)) {
+                indexFwLabels(block)
+                indexBwLabels(block)
             }
+            indexFwLabels(blocks.last())
             return ControlGraph(routine.name, blocks, blocks.first(), blocks.last(), successors, predecessors)
         }
 

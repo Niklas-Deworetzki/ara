@@ -21,6 +21,8 @@ fun <K, V> zipToMap(keys: Iterable<K>, values: Iterable<V>): MutableMap<K, V> {
 }
 
 fun <T> sublist(list: List<T>, skipFront: Int, skipEnd: Int): List<T> {
+    if (list.size < skipFront + skipEnd)
+        return emptyList()
     return list.subList(skipFront, list.size - skipEnd)
 }
 

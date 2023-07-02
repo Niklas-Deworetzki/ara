@@ -40,7 +40,7 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
     }
 
     private lateinit var currentToken: Token
-    private var lookahead: Token = scanner.nextToken()
+    private var lookahead: Token = nextValidScannerToken()
 
     private fun next() {
         currentToken = lookahead

@@ -1,4 +1,4 @@
-// Success
+// Success: A routine may have structure types as parameters.
 
 type A = Int
 

@@ -1,4 +1,5 @@
-// Error: Structure type members #1 `a' differ.
+// Error: Types must be structurally equal.
+// Structure type members #1 `a' differ.
 
 type Foo1 = {
     a: { }

@@ -1,4 +1,4 @@
-// Success
+// Success: A routine may have primitive types as parameters.
 
 routine f(a: Int) -> (a: Int) {
 }

@@ -1,4 +1,5 @@
-// Error: Type of variable `a' cannot be inferred. Perhaps some type annotations are missing?
+// Error: Without a type annotation, a variable or parameter cannot be typed.
+// Type of variable `a' cannot be inferred. Perhaps some type annotations are missing?
 
 routine f(a) -> (b: Int) {
 }

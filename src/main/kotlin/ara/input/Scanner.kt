@@ -58,8 +58,8 @@ class Scanner(private val input: InputSource) : Closeable {
         private fun representsIntegerDigit(code: Int): Boolean =
             code >= '0'.code && code <= '9'.code
 
-        private fun isLineBreak(code: Int): Boolean =
-            code == '\t'.code || code == '\n'.code
+        private fun isNotEndOfLine(code: Int): Boolean =
+            code != '\t'.code && code != '\n'.code
     }
 
     private fun consumeWhitespace(): Boolean {
@@ -122,7 +122,7 @@ class Scanner(private val input: InputSource) : Closeable {
         advance()
         return if (currentCharCode == '/'.code) {
             advance()
-            consumeCharacters(COMMENT, ::isLineBreak)
+            consumeCharacters(COMMENT, ::isNotEndOfLine)
         } else createToken(OPERATOR_DIV)
     }
 

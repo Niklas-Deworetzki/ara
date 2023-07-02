@@ -244,24 +244,24 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
                 is TypeUnification.Error.DifferentMemberNames -> {
                     val aMemberName = Message.quote(currentTypeError.aMember.name)
                     val bMemberName = Message.quote(currentTypeError.bMember.name)
-                    messageHints.add("Structure type members #${currentTypeError.index + 1} $aMemberName and $bMemberName differ.")
+                    messageHints.add("Structure type members #${currentTypeError.index + 1} named $aMemberName and $bMemberName differ.")
                 }
 
                 is TypeUnification.Error.DifferentMemberTypes -> {
                     val memberName = Message.quote(currentTypeError.aMember.name)
-                    messageHints.add("Structure type members #${currentTypeError.index + 1} $memberName differ.")
+                    messageHints.add("Structure type members #${currentTypeError.index + 1} named $memberName differ.")
                     currentTypeError = currentTypeError.cause
                     foundCause = true
                 }
 
                 is TypeUnification.Error.NotUnifiable ->
-                    messageHints.add("Type ${currentTypeError.a} is not equal to ${currentTypeError.b}.")
+                    messageHints.add("Type ${currentTypeError.a} and ${currentTypeError.b} are not compatible.")
             }
         } while (foundCause)
-        val message = messageHints.reduce { a, b ->
-            "$a${System.lineSeparator()} cause: $b"
+        val error = reportError(messageHints.first()).withPositionOf(position)
+        for (hint in messageHints.drop(1)) {
+            error.withAdditionalInfo("Cause: $hint")
         }
-        reportError(message).withPositionOf(position)
     }
 
     private fun Type.isInstantiated(): Boolean = TypeIsInstantiated.evaluate(this)

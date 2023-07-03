@@ -29,7 +29,7 @@ class TypeDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Uni
 
     private fun declareType(definition: Syntax.TypeDefinition) {
         if (!program.environment.declareType(definition.name)) {
-            reportError("Type ${definition.name} is defined multiple times.")
+            reportError("Type ${definition.name} was defined multiple times.")
                 .withPositionOf(definition)
         }
     }
@@ -51,7 +51,7 @@ class TypeDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Uni
                         .withPositionOf(definition.name)
 
                 else ->
-                    reportError("Unable declare type ${definition.name}.")
+                    reportError("Unable to declare type ${definition.name}.")
                         .withPositionOf(definition.name)
             }
         }

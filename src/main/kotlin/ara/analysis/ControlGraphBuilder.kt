@@ -51,7 +51,7 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
 
         private fun startBlock() {
             if (currentBuffer != null) {
-                reportError("Cannot create a new block before the current one is finished.")
+                reportError("Entry points are only allowed to appear after an exit point.")
                     .withPositionOf(currentInstruction)
             } else {
                 currentBuffer = mutableListOf()
@@ -60,7 +60,7 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
 
         private fun buildBlock() {
             if (currentBuffer == null) {
-                reportError("Instruction must be part of a block.")
+                reportError("Instructions are only allowed to appear within a block.")
                     .withPositionOf(currentInstruction)
             } else {
                 currentBuffer!!.add(currentInstruction)
@@ -80,12 +80,15 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
         private val predecessors = mutableMapOf<Syntax.Identifier, Block>()
 
         fun construct(): ControlGraph {
-            indexBwLabels(blocks.first())
-            for (block in sublist(blocks, 1, 1)) {
-                indexFwLabels(block)
-                indexBwLabels(block)
+            if (blocks.size > 1) { // Otherwise there are no labels to index.
+                indexBwLabels(blocks.first())
+                for (block in sublist(blocks, 1, 1)) {
+                    indexFwLabels(block)
+                    indexBwLabels(block)
+                }
+                indexFwLabels(blocks.last())
             }
-            indexFwLabels(blocks.last())
+            reportUnmatchedLabels()
             return ControlGraph(routine.name, blocks, blocks.first(), blocks.last(), successors, predecessors)
         }
 
@@ -108,6 +111,20 @@ class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>(
                 } else {
                     predecessors[label] = block
                 }
+            }
+        }
+
+        private fun reportUnmatchedLabels() {
+            val fwLabels = successors.keys
+            val bwLabels = predecessors.keys
+
+            (fwLabels - bwLabels).forEach {
+                reportError("Label $it has no associated exit point.")
+                    .withPositionOf(it)
+            }
+            (bwLabels - fwLabels).forEach {
+                reportError("Label $it has no associated entry point.")
+                    .withPositionOf(it)
             }
         }
     }

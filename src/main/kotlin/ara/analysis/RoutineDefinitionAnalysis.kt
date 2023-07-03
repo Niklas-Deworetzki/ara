@@ -11,7 +11,7 @@ class RoutineDefinitionAnalysis(private val program: Syntax.Program) : Analysis<
             if (program.environment.defineRoutine(definition)) {
                 debug { "Defined routine ${definition.name}" }
             } else {
-                reportError("Routine ${definition.name} declared multiple times.")
+                reportError("Routine ${definition.name} was defined multiple times.")
                     .withPositionOf(definition.name)
             }
         }

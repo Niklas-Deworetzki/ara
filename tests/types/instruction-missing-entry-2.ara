@@ -1,0 +1,8 @@
+// Error: An exit point can only be present after an entry point.
+// Instructions are only allowed to appear within a block.
+
+routine foo () -> () {
+    -> L
+    -> B
+}
+

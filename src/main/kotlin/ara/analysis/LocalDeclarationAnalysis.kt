@@ -14,10 +14,10 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
 
     private fun initializeLocalScope(routine: Syntax.RoutineDefinition): Environment {
         currentScope = Environment(program.environment)
-        val successfulIn = declareFromParameterList(routine.inputParameters)
-        val successfulOut = declareFromParameterList(routine.outputParameters)
+        val inputsDeclaredSuccessfully = declareFromParameterList(routine.inputParameters)
+        val outputsDeclaredSuccessfully = declareFromParameterList(routine.outputParameters)
 
-        if (successfulIn && successfulOut) {
+        if (inputsDeclaredSuccessfully && outputsDeclaredSuccessfully) {
             routine.body.forEach(::declareFromInstruction)
         }
         return currentScope

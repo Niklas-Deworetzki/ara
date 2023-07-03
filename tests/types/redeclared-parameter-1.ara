@@ -1,0 +1,5 @@
+// Error: A variable name may appear at most once per parameter list.
+// Parameter `duplicate' was declared multiple times.
+
+routine foo (duplicate, duplicate) -> () {
+}

@@ -1,0 +1,6 @@
+// Error: A type can only be defined once.
+// Type `Foo' was defined multiple times.
+
+type Foo = { }
+
+type Foo = { }

@@ -1,0 +1,9 @@
+// Error: Structure types must have the same size to be compatible.
+// Structure types are not compatible as they have different sizes.
+
+type A = { a: Int, b: Int }
+type B = { a: Int, b: A, c: Int }
+
+routine foo (a: A) -> (a: B) {
+}
+

@@ -59,7 +59,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
                 val declaredType = routine.localEnvironment.getVariable(parameter.name)!!
                 val computedType = parameter.type.computedType(routine.localEnvironment)
 
-                declaredType.shouldBe(computedType, parameter)
+                declaredType.mustBeCompatibleWith(computedType, parameter)
             }
         }
     }
@@ -88,20 +88,20 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
             val dstType = assignment.dst.computedType()
 
             if (assignment.arithmetic == null) {
-                srcType.shouldBe(dstType, assignment) {
+                srcType.mustBeCompatibleWith(dstType, assignment) {
                     "Source and destination have different types."
                 }
 
             } else {
-                srcType.shouldBe(Type.Integer, assignment.src) {
+                srcType.mustBeCompatibleWith(Type.Integer, assignment.src) {
                     "Assignment source is not of type ${Type.Integer} as required by modification statement."
                 }
-                dstType.shouldBe(Type.Integer, assignment.dst) {
+                dstType.mustBeCompatibleWith(Type.Integer, assignment.dst) {
                     "Assignment destination is not of type ${Type.Integer} as required by modification statement."
                 }
 
                 val arithmeticType = assignment.arithmetic.value.computedType()
-                arithmeticType.shouldBe(Type.Integer, assignment.arithmetic) {
+                arithmeticType.mustBeCompatibleWith(Type.Integer, assignment.arithmetic) {
                     "Arithmetic expression is not of type ${Type.Integer} as required by modification statement."
                 }
             }
@@ -130,13 +130,13 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
 
         private fun checkPassedArguments(arguments: List<Syntax.ResourceExpression>, expectedTypes: List<Type>) {
             combineWith(arguments, expectedTypes) { argument, expectedType ->
-                argument.computedType().shouldBe(expectedType, argument)
+                argument.computedType().mustBeCompatibleWith(expectedType, argument)
             }
         }
 
         private fun checkConditional(conditional: Syntax.Conditional) {
             val comparisonType = conditional.condition.computedType()
-            comparisonType.shouldBe(Type.Comparison, conditional.condition) {
+            comparisonType.mustBeCompatibleWith(Type.Comparison, conditional.condition) {
                 "Expression is not of type ${Type.Comparison} as required by conditional instruction."
             }
         }
@@ -168,7 +168,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
             is Syntax.TypedStorage -> {
                 val storageType = this.storage.computedType()
                 val hintedType = this.type.computedType(routine.localEnvironment)
-                storageType.shouldBe(hintedType, this)
+                storageType.mustBeCompatibleWith(hintedType, this)
                 hintedType
             }
         }
@@ -180,17 +180,17 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
 
                 when (this.comparator) {
                     LST, LSE, GRT, GRE -> {
-                        lhsType.shouldBe(Type.Integer, this.lhs) {
+                        lhsType.mustBeCompatibleWith(Type.Integer, this.lhs) {
                             "Operand is not of type ${Type.Integer} as required by comparison operator."
                         }
-                        rhsType.shouldBe(Type.Integer, this.rhs) {
+                        rhsType.mustBeCompatibleWith(Type.Integer, this.rhs) {
                             "Operand is not of type ${Type.Integer} as required by comparison operator."
                         }
                         Type.Comparison
                     }
 
                     EQU, NEQ -> {
-                        lhsType.shouldBe(rhsType, this) {
+                        lhsType.mustBeCompatibleWith(rhsType, this) {
                             "Operands are not of the same type as required by equality operator."
                         }
                         Type.Comparison
@@ -204,17 +204,13 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
                 val lhsType = this.lhs.computedType()
                 val rhsType = this.rhs.computedType()
 
-                when (this.operator) {
-                    ADD, SUB, XOR, MUL, DIV, MOD -> {
-                        lhsType.shouldBe(Type.Integer, this.lhs) {
-                            "Operand is not of type ${Type.Integer} as required by arithmetic operator."
-                        }
-                        rhsType.shouldBe(Type.Integer, this.rhs) {
-                            "Operand is not of type ${Type.Integer} as required by arithmetic operator."
-                        }
-                        Type.Integer
-                    }
+                lhsType.mustBeCompatibleWith(Type.Integer, this.lhs) {
+                    "Operand is not of type ${Type.Integer} as required by arithmetic operator."
                 }
+                rhsType.mustBeCompatibleWith(Type.Integer, this.rhs) {
+                    "Operand is not of type ${Type.Integer} as required by arithmetic operator."
+                }
+                Type.Integer
             }
 
             is Syntax.ArithmeticValue ->
@@ -223,7 +219,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
     }
 
 
-    private fun Type.shouldBe(expectedType: Type, position: Syntax, messageHint: (() -> String)? = null) {
+    private fun Type.mustBeCompatibleWith(expectedType: Type, position: Syntax, messageHint: (() -> String)? = null) {
         val typeError = unify(this, expectedType) ?: return // Return if unification succeeds.
 
         val messageHints = mutableListOf<String>()
@@ -238,18 +234,18 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
                     messageHints.add("Infinite type arising from constraints.")
 
                 is TypeUnification.Error.DifferentStructSize -> {
-                    messageHints.add("Structure types with different size.")
+                    messageHints.add("Structure types are not compatible as they have different sizes.")
                 }
 
                 is TypeUnification.Error.DifferentMemberNames -> {
                     val aMemberName = Message.quote(currentTypeError.aMember.name)
                     val bMemberName = Message.quote(currentTypeError.bMember.name)
-                    messageHints.add("Structure type members #${currentTypeError.index + 1} named $aMemberName and $bMemberName differ.")
+                    messageHints.add("Structure type members #${currentTypeError.index + 1} named $aMemberName and $bMemberName are not compatible.")
                 }
 
                 is TypeUnification.Error.DifferentMemberTypes -> {
                     val memberName = Message.quote(currentTypeError.aMember.name)
-                    messageHints.add("Structure type members #${currentTypeError.index + 1} named $memberName differ.")
+                    messageHints.add("Structure type members #${currentTypeError.index + 1} named $memberName are not compatible.")
                     currentTypeError = currentTypeError.cause
                     foundCause = true
                 }

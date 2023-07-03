@@ -1,0 +1,8 @@
+// Error: A routine can only be defined once.
+// Routine `foo' was defined multiple times.
+
+routine foo () -> () {
+}
+
+routine foo () -> () {
+}

@@ -47,19 +47,87 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
 
                 // TODO: Check if there is no Conflict in OUT of predecessors, indicating that this is the root cause.
                 val message = reportError("Variable $variable has conflicting initializers and finalizers.")
-                val definitions = listOf(
-                    conflict.initializers.map { it to "initializer" },
-                    conflict.finalizers.map { it to "finalizer" }
-                ).flatten().sortedBy { it.first }
-
-                for ((position, definition) in definitions) {
+                for ((position, definition) in orderedConflictingDefinitions(conflict)) {
                     message.withAdditionalInfo("A potential cause might be the $definition here:", position)
                 }
             }
         }
+
+        private fun orderedConflictingDefinitions(conflict: LivenessState.Conflict): Iterable<Definition> {
+            val definitions = conflict.initializers.map { Definition(it, "initializer") } +
+                    conflict.finalizers.map { Definition(it, "finalizer") }
+            return definitions.sortedBy { it.range }
+        }
+
+        data class Definition(val range: Range, val description: String)
     }
 
-    class BlockLevelLivenessAnalysis(private val routine: Syntax.RoutineDefinition, private val block: Block) :
+    class CleanAnalysis(val routine: Syntax.RoutineDefinition) : Analysis<Unit>() {
+        private val allVariableNames = routine.localEnvironment.variableNames.toSet()
+        private val outputVariableNames = routine.outputParameters.map { it.name }.toSet()
+        private val livenessAtEndOfRoutine = when {
+            routine.isEmpty() -> routine.liveFromParameterList(routine.inputParameters)
+            else -> routine.liveness.getOut(routine.graph.endBlock)
+        }
+
+        override fun runAnalysis() {
+            reportNotInitializedVariables()
+            reportNotFinalizedVariables()
+        }
+
+        private fun reportNotInitializedVariables() {
+            val expectedToBeInitialized = outputVariableNames
+            val notInitialized = variablesNotInitialized(expectedToBeInitialized)
+            reportVariables(notInitialized, "initialized", "finalizer")
+        }
+
+        private fun reportNotFinalizedVariables() {
+            val expectedToBeFinalized = allVariableNames - outputVariableNames
+            val notFinalized = variablesNotFinalized(expectedToBeFinalized)
+            reportVariables(notFinalized, "finalized", "initializer")
+        }
+
+        private fun reportVariables(variables: Iterable<Variable>, expectedState: String, cause: String) {
+            for ((name, potentialCausePositions) in variables) {
+                val message = "Variable $name is not $expectedState at the end of routine."
+
+                if (potentialCausePositions.isNotEmpty()) {
+                    for (potentialCausePosition in potentialCausePositions) {
+                        reportError(message)
+                            .withAdditionalInfo(
+                                "A potential cause for this might be the $cause here:",
+                                potentialCausePosition
+                            )
+                    }
+                } else {
+                    reportError(message).withPositionOf(name)
+                }
+            }
+        }
+
+        private fun variablesNotInitialized(variables: Set<Syntax.Identifier>) =
+            variablesNotInState<LivenessState.Initialized>(variables) { it.finalizers }
+
+        private fun variablesNotFinalized(variables: Set<Syntax.Identifier>) =
+            variablesNotInState<LivenessState.Finalized>(variables) { it.initializers }
+
+        private inline fun <reified ExpectedState : LivenessState> variablesNotInState(
+            variableNames: Set<Syntax.Identifier>,
+            extractor: (LivenessState) -> Set<Range>
+        ): Iterable<Variable> {
+            val results = mutableListOf<Variable>()
+            for (name in variableNames) {
+                val finalState = livenessAtEndOfRoutine[ResourcePath.ofIdentifier(name)]
+                if (finalState !is ExpectedState)
+                    results.add(Variable(name, extractor(finalState)))
+            }
+            return results.sortedBy { it.definitions.minOrNull() }
+        }
+
+        data class Variable(val name: Syntax.Identifier, val definitions: Set<Range>)
+    }
+
+    class BlockLevelLivenessAnalysis(routine: Syntax.RoutineDefinition, private val block: Block) :
         Analysis<Unit>() {
         private val currentState = routine.liveness.getIn(block)
 
@@ -145,64 +213,6 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
         }
     }
 
-    class CleanAnalysis(val routine: Syntax.RoutineDefinition) : Analysis<Unit>() {
-        private val liveAtEndOfRoutine = when {
-            routine.isEmpty() -> routine.liveFromParameterList(routine.inputParameters)
-            else -> routine.liveness.getOut(routine.graph.endBlock)
-        }
-
-        override fun runAnalysis() {
-            val allVariables = routine.localEnvironment.variableNames.toSet()
-            val outputVariables = routine.outputParameters.map { it.name }.toSet()
-
-            val notInitialized = variablesNotInitialized(outputVariables)
-            reportVariables(notInitialized, "initialized", "finalizer")
-            val notFinalized = variablesNotFinalized(allVariables - outputVariables)
-            reportVariables(notFinalized, "finalized", "initializer")
-        }
-
-        private fun reportVariables(
-            variables: Iterable<Pair<Syntax.Identifier, Set<Range>>>,
-            expectedState: String,
-            cause: String
-        ) {
-            for ((name, potentialCausePositions) in variables) {
-                val message = "Variable $name is not $expectedState at the end of routine."
-
-                if (potentialCausePositions.isNotEmpty()) {
-                    for (potentialCausePosition in potentialCausePositions) {
-                        reportError(message)
-                            .withAdditionalInfo(
-                                "A potential cause for this might be the $cause here:",
-                                potentialCausePosition
-                            )
-                    }
-                } else {
-                    reportError(message).withPositionOf(name)
-                }
-            }
-        }
-
-        private fun variablesNotInitialized(variables: Set<Syntax.Identifier>) =
-            variablesNotInState<LivenessState.Initialized>(variables) { it.finalizers }
-
-        private fun variablesNotFinalized(variables: Set<Syntax.Identifier>) =
-            variablesNotInState<LivenessState.Finalized>(variables) { it.initializers }
-
-        private inline fun <reified ExpectedState : LivenessState> variablesNotInState(
-            variables: Set<Syntax.Identifier>,
-            extractor: (LivenessState) -> Set<Range>
-        ): Iterable<Pair<Syntax.Identifier, Set<Range>>> {
-            val results = mutableListOf<Pair<Syntax.Identifier, Set<Range>>>()
-            for (variable in variables) {
-                val finalState = liveAtEndOfRoutine[ResourcePath.ofIdentifier(variable)]
-                if (finalState !is ExpectedState)
-                    results.add(variable to extractor(finalState))
-            }
-            return results.sortedBy { it.second.minOrNull() }
-        }
-    }
-
     class ConflictsFinder(val routine: Syntax.RoutineDefinition) {
         private val detectedConflicts = mutableMapOf<Syntax.Identifier, LivenessState>()
 
@@ -221,11 +231,11 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
 
         private fun detectConflicts() {
             for (block in routine.graph) {
-                val liveAtEnd = routine.liveness.getOut(block)
+                val livenessAtEndOfBlock = routine.liveness.getOut(block)
 
                 for (variable in routine.localEnvironment.variableNames) {
                     val path = ResourcePath.ofIdentifier(variable)
-                    val potentialConflict = liveAtEnd[path]
+                    val potentialConflict = livenessAtEndOfBlock[path]
 
                     if (potentialConflict is LivenessState.Conflict) {
                         updateConflict(variable, potentialConflict)

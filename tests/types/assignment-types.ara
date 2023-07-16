@@ -1,0 +1,9 @@
+// Error: Assignment source and target must have compatible types.
+// Source and destination have different types.
+
+type A = {  }
+
+routine foo (a: A) -> (b: Int) {
+    b := a
+}
+

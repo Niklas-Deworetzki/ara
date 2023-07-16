@@ -257,7 +257,9 @@ class Parser(private val scanner: Scanner) : Analysis<Syntax.Program>() {
                 next()
                 val secondValue = parseResourceExpression()
                 nextTokenShouldBe(PAREN_R, "closing parenthesis")
-                Either.left(Syntax.ComparativeBinary(firstValue, comparator, secondValue))
+                val comparison = Syntax.ComparativeBinary(firstValue, comparator, secondValue)
+                comparison.range = firstValue.range union secondValue.range
+                Either.left(comparison)
             }
 
             else -> {

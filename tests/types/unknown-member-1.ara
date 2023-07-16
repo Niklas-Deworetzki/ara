@@ -1,0 +1,6 @@
+// Error: Member accesses require a structure type.
+// Type does not have a member named `unknown'.
+
+routine foo (a: Int, x: Int) -> (x, b: Int) {
+    b := a + (x.unknown)
+}

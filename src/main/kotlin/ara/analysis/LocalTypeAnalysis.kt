@@ -157,7 +157,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
 
             is Syntax.NamedStorage -> when (val type = routine.localEnvironment.getVariable(this.name)) {
                 null -> {
-                    reportError("Unknown variable ${this.name}")
+                    reportError("Unknown variable ${this.name}.")
                         .withPositionOf(this)
                     Type.Variable()
                 }

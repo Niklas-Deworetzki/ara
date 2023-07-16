@@ -1,0 +1,8 @@
+// Error: Member accesses require a member to be present.
+// Type does not have a member named `unknown'.
+
+type A = { x: Int }
+
+routine foo (a: Int, x: A) -> (b: Int, x: A) {
+    b := a + (x.unknown)
+}

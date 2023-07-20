@@ -3,7 +3,6 @@ package ara.analysis
 import ara.Direction
 import ara.reporting.Message
 import ara.syntax.Syntax
-import ara.syntax.Syntax.BinaryOperator.*
 import ara.syntax.Syntax.ComparisonOperator.*
 import ara.types.Environment
 import ara.types.Type
@@ -18,7 +17,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
         val definedRoutines = program.definitions.filterIsInstance<Syntax.RoutineDefinition>()
 
         definedRoutines.forEach {
-            ParameterListTyper(it).typeParameters()
+            ParameterListTyper(it).defineTypesForParameters()
 
             val parameterNames = (it.inputParameters + it.outputParameters).map { parameter -> parameter.name }.toSet()
             ensureVariablesHaveInstantiatedTypes(it.localEnvironment, parameterNames)
@@ -52,7 +51,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
 
 
     private inner class ParameterListTyper(private val routine: Syntax.RoutineDefinition) {
-        fun typeParameters() {
+        fun defineTypesForParameters() {
             for (parameter in routine.inputParameters + routine.outputParameters) {
                 if (parameter.type == null) continue
 
@@ -271,9 +270,12 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
         override fun uninitializedVariable(): Boolean = false
     }
 
-    private fun Type.getMemberType(name: String): Type? = when (this) {
+    private tailrec fun Type.getMemberType(name: String): Type? = when (this) {
         is Type.Structure ->
             members.find { it.name == name }?.type
+
+        is Type.Variable ->
+            type?.getMemberType(name)
 
         else ->
             null

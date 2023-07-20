@@ -1,5 +1,6 @@
 package ara.analysis
 
+import ara.Main
 import ara.input.Parser
 import ara.input.Scanner
 import ara.position.InputSource
@@ -42,7 +43,8 @@ abstract class Analysis<T> {
     }
 
 
-    open val isDebugEnabled: Boolean = false
+    open val isDebugEnabled: Boolean
+        get() = this::class.simpleName in Main.analysisOptions.debugEnabledPasses
 
     protected inline fun debug(message: () -> String) {
         if (isDebugEnabled)

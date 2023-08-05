@@ -26,11 +26,11 @@ import static ara.input.Sym.*;
 
 %{
     private Token token(int tokenId) {
-        return Token.withId(tokenId, yychar - yylength(), yychar);
+        return Token.withId(tokenId, yychar, yychar + yylength());
     }
 
     private Token token(int tokenId, Object value) {
-        return Token.withId(tokenId, yychar - yylength(), yychar, value);
+        return Token.withId(tokenId, yychar, yychar + yylength(), value);
     }
 
     private static String formatCharacter(char character) {

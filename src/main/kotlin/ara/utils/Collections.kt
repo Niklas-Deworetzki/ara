@@ -1,5 +1,8 @@
 package ara.utils
 
+infix fun <E> Set<E>.intersects(other: Set<E>): Boolean =
+    this.any(other::contains)
+
 fun <X, Y> combineWith(xs: Iterable<X>, ys: Iterable<Y>, action: (X, Y) -> Unit) {
     val xsIterator = xs.iterator()
     val ysIterator = ys.iterator()

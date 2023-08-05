@@ -121,7 +121,7 @@ TypeDefinition ::= TYPE:l Identifier:name EQ Type:type
 RoutineDefinition ::= ROUTINE:l Identifier:name PAREN_L ParameterList:in ARROW_R ParameterList:out PAREN_R CURL_L InstructionList:body CURL_R:r
                        {: RESULT = withRange(new RoutineDefinition(name, in, out, body), lleft, rright); :}
                     | ROUTINE:l Identifier:name PAREN_L ParameterList:in PAREN_R ARROW_R PAREN_L ParameterList:out PAREN_R CURL_L InstructionList:body CURL_R:r
-                                           {: RESULT = withRange(new RoutineDefinition(name, in, out, body), lleft, rright); :}
+                       {: RESULT = withRange(new RoutineDefinition(name, in, out, body), lleft, rright); :}
                     ;
 
 //
@@ -280,6 +280,8 @@ ConditionalExpression ::= ComparativeBinary:binary
 
 ComparativeBinary ::= PAREN_L:l ResourceExpression:lhs ComparisonOperator:op ResourceExpression:rhs PAREN_R:r
                        {: RESULT = withRange(new ComparativeBinary(lhs, op, rhs), lleft, rright); :}
+                    | ResourceExpression:lhs ComparisonOperator:op ResourceExpression:rhs
+                       {: RESULT = withRange(new ComparativeBinary(lhs, op, rhs), lhsleft, rhsright); :}
                     ;
 
 //

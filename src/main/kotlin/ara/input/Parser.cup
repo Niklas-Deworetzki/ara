@@ -1,0 +1,358 @@
+package ara.input;
+
+import java_cup.runtime.*;
+import java.util.*;
+import java.util.function.Function;
+
+import ara.Direction;
+import ara.input.symbol.Token;
+import ara.position.*;
+import ara.syntax.Syntax;
+import ara.syntax.Syntax.*;
+
+parser code {:
+public InputSource source;
+public SyntaxErrorReporter reporter;
+
+private static <T> List<T> nil() {
+    return new LinkedList<>();
+}
+
+private static <T> List<T> cons(T head, List<T> tail) {
+    tail.add(0, head);
+    return tail;
+}
+
+private <S extends Syntax> S withRange(S syntax, int left, int right) {
+    syntax.setRange(new Range(source, left, right));
+    return syntax;
+}
+
+@Override
+public void syntax_error(Symbol currentToken) {
+    reporter.reportSyntaxError((Token) currentToken, expected_token_ids());
+}
+
+@Override
+public void unrecovered_syntax_error(Symbol currentToken) {
+    done_parsing();
+}
+:}
+
+terminal String     IDENTIFIER;
+terminal Integer    INTEGER;
+terminal String     HASHCOMMENT, UNKNOWN;
+
+terminal    ROUTINE, TYPE;
+terminal    CALL, UNCALL;
+terminal    COLON, COMMA, DOT, EQ;
+terminal    ASSIGNMENT;
+
+terminal    OPERATOR_ADD, OPERATOR_SUB, OPERATOR_XOR, OPERATOR_MUL, OPERATOR_DIV, OPERATOR_MOD;
+terminal    OPERATOR_EQU, OPERATOR_NEQ, OPERATOR_LST, OPERATOR_LSE, OPERATOR_GRT, OPERATOR_GRE;
+
+terminal    ARROW_L, ARROW_R;
+terminal    PAREN_L, PAREN_R;
+terminal    CURL_L, CURL_R;
+
+non terminal Program                Program;
+non terminal Identifier             Identifier;
+non terminal List<Definition>       GlobalDefinitionList;
+non terminal Definition             Definition, TypeDefinition, RoutineDefinition;
+non terminal List<Parameter>        ParameterList, ParameterListTail;
+non terminal Parameter              Parameter;
+non terminal List<Instruction>      InstructionList;
+non terminal Instruction            Instruction, Assignment, Unconditional, Conditional, Call;
+non terminal List<ResourceExpression> ArgumentList, ArgumentListTail;
+non terminal ResourceExpression     ResourceExpression, IntegerLiteral;
+non terminal Storage                Storage, BaseStorage, NamedStorage;
+non terminal List<Function<Storage, Storage>> StorageExtensions;
+non terminal Function<Storage, Storage> TypedStorageExtension, MemberAccessExtension;
+non terminal ArithmeticModifier     ArithmeticModifier;
+non terminal ArithmeticExpression   ArithmeticExpression, ArithmeticBinary, ArithmeticValue;
+non terminal ConditionalExpression  ConditionalExpression, ComparativeBinary;
+non terminal Type                   Type, NamedType, StructureType;
+non terminal List<Member>           MemberList, MemberListTail;
+non terminal Member                 Member;
+non terminal ModificationOperator   ModificationOperator;
+non terminal ComparisonOperator     ComparisonOperator;
+non terminal BinaryOperator         BinaryOperator;
+non terminal IgnoredCommentLines;
+non terminal Epsilon;
+
+start with Program;
+
+Epsilon ::= /* Empty symbol. */
+          ;
+
+IgnoredCommentLines ::= HASHCOMMENT IgnoredCommentLines
+                      | Epsilon
+                      ;
+
+Identifier ::= IDENTIFIER:name
+                {: RESULT = withRange(new Identifier(name), nameleft, nameright); :}
+             ;
+
+//
+//
+//
+
+Program ::= IgnoredCommentLines GlobalDefinitionList:result
+             {: RESULT = new Program(result); :}
+          ;
+
+GlobalDefinitionList ::= Definition:head GlobalDefinitionList:tail
+                          {: RESULT = cons(head, tail); :}
+                       | Epsilon
+                          {: RESULT = nil(); :}
+                       ;
+
+Definition ::= TypeDefinition:result
+                {: RESULT = result; :}
+             | RoutineDefinition:result
+                {: RESULT = result; :}
+             | error
+             ;
+
+TypeDefinition ::= TYPE:l Identifier:name EQ Type:type
+                    {: RESULT = withRange(new TypeDefinition(name, type), lleft, typeright); :}
+                 ;
+
+RoutineDefinition ::= ROUTINE:l Identifier:name PAREN_L ParameterList:in ARROW_R ParameterList:out PAREN_R CURL_L InstructionList:body CURL_R:r
+                       {: RESULT = withRange(new RoutineDefinition(name, in, out, body), lleft, rright); :}
+                    | ROUTINE:l Identifier:name PAREN_L ParameterList:in PAREN_R ARROW_R PAREN_L ParameterList:out PAREN_R CURL_L InstructionList:body CURL_R:r
+                                           {: RESULT = withRange(new RoutineDefinition(name, in, out, body), lleft, rright); :}
+                    ;
+
+//
+//
+//
+
+ParameterList ::= Parameter:head ParameterListTail:tail
+                   {: RESULT = cons(head, tail); :}
+                | Epsilon
+                   {: RESULT = nil(); :}
+                ;
+
+ParameterListTail ::= COMMA Parameter:head ParameterListTail:tail
+                       {: RESULT = cons(head, tail); :}
+                    | Epsilon
+                       {: RESULT = nil(); :}
+                    ;
+
+Parameter ::= Identifier:name
+               {: RESULT = withRange(new Parameter(name, null), nameleft, nameright); :}
+            | Identifier:name COLON Type:type
+               {: RESULT = withRange(new Parameter(name, type), nameleft, typeright); :}
+            ;
+
+//
+//
+//
+
+InstructionList ::= Instruction:head InstructionList:tail
+                     {: RESULT = cons(head, tail); :}
+                  | Epsilon
+                     {: RESULT = nil(); :}
+                  ;
+
+Instruction ::= Assignment:result
+                 {: RESULT = result; :}
+              | Unconditional:result
+                 {: RESULT = result; :}
+              | Conditional:result
+                 {: RESULT = result; :}
+              | Call:result
+                 {: RESULT = result; :}
+              ;
+
+Assignment ::= ResourceExpression:dst ASSIGNMENT ResourceExpression:src
+                {: RESULT = withRange(new Assignment(dst, src, null), dstleft, srcright); :}
+             | ResourceExpression:dst ASSIGNMENT ResourceExpression:src ArithmeticModifier:mod
+                {: RESULT = withRange(new Assignment(dst, src, mod), dstleft, modright); :}
+             ;
+
+Unconditional ::= ARROW_R:arrow Identifier:label
+                   {: RESULT = withRange(new Unconditional(Direction.FORWARD, label), arrowleft, labelright); :}
+                | Identifier:label ARROW_L:arrow
+                   {: RESULT = withRange(new Unconditional(Direction.BACKWARD, label), labelleft, arrowright); :}
+                ;
+
+Conditional ::= ConditionalExpression:condition ARROW_R Identifier:ltarget COMMA Identifier:rtarget
+                 {: RESULT = withRange(new Conditional(Direction.FORWARD, ltarget, rtarget, condition), conditionleft, rtargetright); :}
+              | Identifier:ltarget COMMA Identifier:rtarget ARROW_L ConditionalExpression:condition
+                 {: RESULT = withRange(new Conditional(Direction.BACKWARD, ltarget, rtarget, condition), ltargetleft, conditionright); :}
+              ;
+
+Call ::= ArgumentList:lhs ASSIGNMENT CALL Identifier:routine ArgumentList:rhs
+          {: RESULT = withRange(new Call(lhs, rhs, Direction.FORWARD, routine), lhsleft, rhsright); :}
+       | ArgumentList:lhs ASSIGNMENT UNCALL Identifier:routine ArgumentList:rhs
+          {: RESULT = withRange(new Call(lhs, rhs, Direction.BACKWARD, routine), lhsleft, rhsright); :}
+       ;
+
+//
+//
+//
+
+ArgumentListTail ::= COMMA ResourceExpression:head ArgumentListTail:tail
+                      {: RESULT = cons(head, tail); :}
+                   | Epsilon
+                      {: RESULT = nil(); :}
+                   ;
+
+ArgumentList ::= PAREN_L ResourceExpression:head ArgumentListTail:tail PAREN_R
+                  {: RESULT = cons(head, tail); :}
+               | PAREN_L PAREN_R
+                  {: RESULT = nil(); :}
+               ;
+
+ResourceExpression ::= IntegerLiteral:result
+                        {: RESULT = result; :}
+                     | Storage:result
+                        {: RESULT = result; :}
+                     ;
+
+IntegerLiteral ::= INTEGER:value
+                    {: RESULT = withRange(new IntegerLiteral(value), valueleft, valueright); :}
+                 ;
+
+Storage ::= BaseStorage:base StorageExtensions:extensions
+             {: RESULT = base;
+                for (var constructor : extensions) {
+                    RESULT = constructor.apply(RESULT);
+                }
+             :}
+          ;
+
+BaseStorage ::= NamedStorage:result
+                 {: RESULT = result; :}
+              ;
+
+NamedStorage ::= Identifier:name
+                  {: RESULT = withRange(new NamedStorage(name), nameleft, nameright); :}
+               ;
+
+StorageExtensions ::= TypedStorageExtension:head StorageExtensions:tail
+                       {: RESULT = cons(head, tail); :}
+                    | MemberAccessExtension:head StorageExtensions:tail
+                       {: RESULT = cons(head, tail); :}
+                    | Epsilon
+                       {: RESULT = nil(); :}
+                    ;
+
+TypedStorageExtension ::= COLON:l Type:type
+                           {: RESULT = (base) -> withRange(new TypedStorage(base, type), lleft, typeright); :}
+                        ;
+
+MemberAccessExtension ::= DOT:l Identifier:member
+                           {: RESULT = (base) -> withRange(new MemberAccess(base, member), lleft, memberright); :}
+                        ;
+
+//
+//
+//
+
+ArithmeticModifier ::= ModificationOperator:op ArithmeticExpression:expression
+                        {: RESULT = withRange(new ArithmeticModifier(op, expression), opleft, expressionright); :}
+                     ;
+
+ArithmeticExpression ::= ArithmeticBinary:result
+                          {: RESULT = result; :}
+                       | ArithmeticValue:result
+                          {: RESULT = result; :}
+                       ;
+
+ArithmeticBinary ::= PAREN_L:l ResourceExpression:lhs BinaryOperator:op ResourceExpression:rhs PAREN_R:r
+                     {: RESULT = withRange(new ArithmeticBinary(lhs, op, rhs), lleft, rright); :}
+                   | ResourceExpression:lhs BinaryOperator:op ResourceExpression:rhs
+                     {: RESULT = withRange(new ArithmeticBinary(lhs, op, rhs), lhsleft, rhsright); :}
+                   ;
+
+ArithmeticValue ::= PAREN_L:l ResourceExpression:value PAREN_R:r
+                     {: RESULT = withRange(new ArithmeticValue(value), lleft, rright); :}
+                  | ResourceExpression:value
+                     {: RESULT = withRange(new ArithmeticValue(value), valueleft, valueright); :}
+                  ;
+
+ConditionalExpression ::= ComparativeBinary:binary
+                           {: RESULT = binary; :}
+                        ;
+
+ComparativeBinary ::= PAREN_L:l ResourceExpression:lhs ComparisonOperator:op ResourceExpression:rhs PAREN_R:r
+                       {: RESULT = withRange(new ComparativeBinary(lhs, op, rhs), lleft, rright); :}
+                    ;
+
+//
+//
+//
+
+Type ::= NamedType:type
+          {: RESULT = type; :}
+       | StructureType:type
+          {: RESULT = type; :}
+       ;
+
+NamedType ::= Identifier:name
+               {: RESULT = withRange(new NamedType(name), nameleft, nameright); :}
+            ;
+
+StructureType ::= CURL_L:l MemberList:members CURL_R:r
+                   {: RESULT = withRange(new StructureType(members), lleft, rright); :}
+                ;
+
+MemberList ::= Member:head MemberListTail:tail
+                {: RESULT = cons(head, tail); :}
+             | Epsilon
+                {: RESULT = nil(); :}
+             ;
+
+MemberListTail ::= COMMA Member:head MemberListTail:tail
+                    {: RESULT = cons(head, tail); :}
+                 | Epsilon
+                    {: RESULT = nil(); :}
+                 ;
+
+Member ::= Identifier:name COLON Type:type
+            {: RESULT = withRange(new Member(name, type), nameleft, typeright); :}
+         ;
+
+//
+//
+//
+
+ModificationOperator ::= OPERATOR_ADD
+                          {: RESULT = ModificationOperator.ADD; :}
+                       | OPERATOR_SUB
+                          {: RESULT = ModificationOperator.SUB; :}
+                       | OPERATOR_XOR
+                          {: RESULT = ModificationOperator.XOR; :}
+                       ;
+
+ComparisonOperator ::= OPERATOR_EQU
+                        {: RESULT = ComparisonOperator.EQU; :}
+                     | OPERATOR_NEQ
+                        {: RESULT = ComparisonOperator.NEQ; :}
+                     | OPERATOR_LST
+                        {: RESULT = ComparisonOperator.LST; :}
+                     | OPERATOR_LSE
+                        {: RESULT = ComparisonOperator.LSE; :}
+                     | OPERATOR_GRT
+                        {: RESULT = ComparisonOperator.GRT; :}
+                     | OPERATOR_GRE
+                        {: RESULT = ComparisonOperator.GRE; :}
+                     ;
+
+BinaryOperator ::= OPERATOR_ADD
+                    {: RESULT = BinaryOperator.ADD; :}
+                 | OPERATOR_SUB
+                    {: RESULT = BinaryOperator.SUB; :}
+                 | OPERATOR_XOR
+                    {: RESULT = BinaryOperator.XOR; :}
+                 | OPERATOR_MUL
+                    {: RESULT = BinaryOperator.MUL; :}
+                 | OPERATOR_DIV
+                    {: RESULT = BinaryOperator.DIV; :}
+                 | OPERATOR_MOD
+                    {: RESULT = BinaryOperator.MOD; :}
+                 ;
+

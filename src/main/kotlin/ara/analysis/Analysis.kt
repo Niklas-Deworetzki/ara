@@ -1,8 +1,10 @@
 package ara.analysis
 
 import ara.Main
+import ara.input.InputAnalysis
 import ara.input.Parser
 import ara.input.Scanner
+import ara.input.symbol.SymbolFactory
 import ara.position.InputSource
 import ara.reporting.Message
 import ara.syntax.Syntax
@@ -65,9 +67,8 @@ abstract class Analysis<T> {
             return program
         }
 
-        private fun loadProgram(): Syntax.Program = Scanner(input).use {
-            includeAnalysis(Parser(it))
-        }
+        private fun loadProgram(): Syntax.Program =
+            includeAnalysis(InputAnalysis(input))
 
         private inline fun andThen(analysisConstructor: () -> Analysis<Unit>) {
             val analysis = analysisConstructor()

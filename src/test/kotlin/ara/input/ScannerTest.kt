@@ -2,7 +2,9 @@ package ara.input
 
 import ara.position.InputSource
 import io.kotest.matchers.shouldBe
+import java_cup.runtime.Symbol
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.fail
 
 class ScannerTest {
 
@@ -10,39 +12,39 @@ class ScannerTest {
     fun scannerReturnsEOF() {
         val token = "".firstToken()
 
-        token.type.shouldBe(Token.Type.EOF)
+        token.shouldBeToken(Sym.EOF)
     }
 
     @Test
     fun scannerRecognizesSimpleTokens() {
-        "routine".firstToken().type.shouldBe(Token.Type.ROUTINE)
-        ":".firstToken().type.shouldBe(Token.Type.COLON)
-        ",".firstToken().type.shouldBe(Token.Type.COMMA)
-        ".".firstToken().type.shouldBe(Token.Type.DOT)
-        ":=".firstToken().type.shouldBe(Token.Type.ASSIGNMENT)
-        "+".firstToken().type.shouldBe(Token.Type.OPERATOR_ADD)
-        "-".firstToken().type.shouldBe(Token.Type.OPERATOR_SUB)
-        "^".firstToken().type.shouldBe(Token.Type.OPERATOR_XOR)
-        "*".firstToken().type.shouldBe(Token.Type.OPERATOR_MUL)
-        "/".firstToken().type.shouldBe(Token.Type.OPERATOR_DIV)
-        "%".firstToken().type.shouldBe(Token.Type.OPERATOR_MOD)
-        "==".firstToken().type.shouldBe(Token.Type.OPERATOR_EQU)
-        "!=".firstToken().type.shouldBe(Token.Type.OPERATOR_NEQ)
-        "<".firstToken().type.shouldBe(Token.Type.OPERATOR_LST)
-        "<=".firstToken().type.shouldBe(Token.Type.OPERATOR_LSE)
-        ">".firstToken().type.shouldBe(Token.Type.OPERATOR_GRT)
-        ">=".firstToken().type.shouldBe(Token.Type.OPERATOR_GRE)
-        "<-".firstToken().type.shouldBe(Token.Type.ARROW_L)
-        "->".firstToken().type.shouldBe(Token.Type.ARROW_R)
-        "(".firstToken().type.shouldBe(Token.Type.PAREN_L)
-        ")".firstToken().type.shouldBe(Token.Type.PAREN_R)
-        "{".firstToken().type.shouldBe(Token.Type.CURL_L)
-        "}".firstToken().type.shouldBe(Token.Type.CURL_R)
+        "routine".firstToken().shouldBeToken(Sym.ROUTINE)
+        ":".firstToken().shouldBeToken(Sym.COLON)
+        ",".firstToken().shouldBeToken(Sym.COMMA)
+        ".".firstToken().shouldBeToken(Sym.DOT)
+        ":=".firstToken().shouldBeToken(Sym.ASSIGNMENT)
+        "+".firstToken().shouldBeToken(Sym.OPERATOR_ADD)
+        "-".firstToken().shouldBeToken(Sym.OPERATOR_SUB)
+        "^".firstToken().shouldBeToken(Sym.OPERATOR_XOR)
+        "*".firstToken().shouldBeToken(Sym.OPERATOR_MUL)
+        "/".firstToken().shouldBeToken(Sym.OPERATOR_DIV)
+        "%".firstToken().shouldBeToken(Sym.OPERATOR_MOD)
+        "==".firstToken().shouldBeToken(Sym.OPERATOR_EQU)
+        "!=".firstToken().shouldBeToken(Sym.OPERATOR_NEQ)
+        "<".firstToken().shouldBeToken(Sym.OPERATOR_LST)
+        "<=".firstToken().shouldBeToken(Sym.OPERATOR_LSE)
+        ">".firstToken().shouldBeToken(Sym.OPERATOR_GRT)
+        ">=".firstToken().shouldBeToken(Sym.OPERATOR_GRE)
+        "<-".firstToken().shouldBeToken(Sym.ARROW_L)
+        "->".firstToken().shouldBeToken(Sym.ARROW_R)
+        "(".firstToken().shouldBeToken(Sym.PAREN_L)
+        ")".firstToken().shouldBeToken(Sym.PAREN_R)
+        "{".firstToken().shouldBeToken(Sym.CURL_L)
+        "}".firstToken().shouldBeToken(Sym.CURL_R)
     }
 
     @Test
     fun scannerSkipsWhitespace() {
-        " \t\n\r+".firstToken().type.shouldBe(Token.Type.OPERATOR_ADD)
+        " \t\n\r+".firstToken().shouldBeToken(Sym.OPERATOR_ADD)
     }
 
     @Test
@@ -50,21 +52,31 @@ class ScannerTest {
         """
             // This should be recognized as a comment.
             +
-        """.firstToken().type.shouldBe(Token.Type.OPERATOR_ADD)
+        """.firstToken().shouldBeToken(Sym.OPERATOR_ADD)
+    }
+
+    @Test
+    fun scannerExtractsTextFromHashComments() {
+        val token = """
+            #I am a special comment.
+        """.firstToken()
+
+        token.shouldBeToken(Sym.HASHCOMMENT)
+        token.value.shouldBe("I am a special comment.")
     }
 
     @Test
     fun scannerRecognizesIdentifiers() {
         val token = "aB_0".firstToken()
-        token.type.shouldBe(Token.Type.IDENTIFIER)
+        token.shouldBeToken(Sym.IDENTIFIER)
         token.value.shouldBe("aB_0")
     }
 
     @Test
     fun scannerRecognizesIntegers() {
         val token = "0123456789".firstToken()
-        token.type.shouldBe(Token.Type.INTEGER)
-        token.value.shouldBe("0123456789")
+        token.shouldBeToken(Sym.INTEGER)
+        token.value.shouldBe(123456789)
     }
 
     @Test
@@ -78,53 +90,53 @@ class ScannerTest {
             // Arrows and remaining stuff
             <- -> ( ) { } : , . := =
         """.shouldContainTokensAndEOF(
-            Token.Type.IDENTIFIER,
-            Token.Type.IDENTIFIER,
-            Token.Type.IDENTIFIER,
-            Token.Type.IDENTIFIER,
-            Token.Type.ROUTINE,
-            Token.Type.TYPE,
-            Token.Type.CALL,
-            Token.Type.UNCALL,
-            Token.Type.INTEGER,
-            Token.Type.INTEGER,
-            Token.Type.INTEGER,
-            Token.Type.INTEGER,
-            Token.Type.INTEGER,
-            Token.Type.INTEGER,
-            Token.Type.INTEGER,
-            Token.Type.INTEGER,
-            Token.Type.INTEGER,
-            Token.Type.INTEGER,
-            Token.Type.OPERATOR_ADD,
-            Token.Type.OPERATOR_SUB,
-            Token.Type.OPERATOR_XOR,
-            Token.Type.OPERATOR_MUL,
-            Token.Type.OPERATOR_DIV,
-            Token.Type.OPERATOR_MOD,
-            Token.Type.OPERATOR_EQU,
-            Token.Type.OPERATOR_NEQ,
-            Token.Type.OPERATOR_LST,
-            Token.Type.OPERATOR_LSE,
-            Token.Type.OPERATOR_GRT,
-            Token.Type.OPERATOR_GRE,
-            Token.Type.ARROW_L,
-            Token.Type.ARROW_R,
-            Token.Type.PAREN_L,
-            Token.Type.PAREN_R,
-            Token.Type.CURL_L,
-            Token.Type.CURL_R,
-            Token.Type.COLON,
-            Token.Type.COMMA,
-            Token.Type.DOT,
-            Token.Type.ASSIGNMENT,
-            Token.Type.EQ
+            Sym.IDENTIFIER,
+            Sym.IDENTIFIER,
+            Sym.IDENTIFIER,
+            Sym.IDENTIFIER,
+            Sym.ROUTINE,
+            Sym.TYPE,
+            Sym.CALL,
+            Sym.UNCALL,
+            Sym.INTEGER,
+            Sym.INTEGER,
+            Sym.INTEGER,
+            Sym.INTEGER,
+            Sym.INTEGER,
+            Sym.INTEGER,
+            Sym.INTEGER,
+            Sym.INTEGER,
+            Sym.INTEGER,
+            Sym.INTEGER,
+            Sym.OPERATOR_ADD,
+            Sym.OPERATOR_SUB,
+            Sym.OPERATOR_XOR,
+            Sym.OPERATOR_MUL,
+            Sym.OPERATOR_DIV,
+            Sym.OPERATOR_MOD,
+            Sym.OPERATOR_EQU,
+            Sym.OPERATOR_NEQ,
+            Sym.OPERATOR_LST,
+            Sym.OPERATOR_LSE,
+            Sym.OPERATOR_GRT,
+            Sym.OPERATOR_GRE,
+            Sym.ARROW_L,
+            Sym.ARROW_R,
+            Sym.PAREN_L,
+            Sym.PAREN_R,
+            Sym.CURL_L,
+            Sym.CURL_R,
+            Sym.COLON,
+            Sym.COMMA,
+            Sym.DOT,
+            Sym.ASSIGNMENT,
+            Sym.EQ
         )
     }
 
     @Test
     fun scannerRecognizesIncompleteTokens() {
-        "!".shouldContainTokensAndEOF(Token.Type.UNKNOWN)
+        "!".shouldContainTokensAndEOF(Sym.UNKNOWN)
     }
 
     @Test
@@ -133,31 +145,47 @@ class ScannerTest {
 
         for (keyword in keywords) {
             for (length in 1 until keyword.length - 1) {
-                keyword.substring(0, length).firstToken().type
-                    .shouldBe(Token.Type.IDENTIFIER)
+                keyword.substring(0, length).firstToken()
+                    .shouldBeToken(Sym.IDENTIFIER)
             }
         }
     }
 
-    private fun String.shouldContainTokensAndEOF(vararg types: Token.Type) {
+    private fun String.shouldContainTokensAndEOF(vararg types: Int) {
         val input = InputSource.fromString(this)
         val typesIterator = types.iterator()
 
-        Scanner(input).use { scanner ->
+        input.open().use {
+            val scanner = Scanner(it)
             while (typesIterator.hasNext()) {
-                val scannedToken = scanner.nextToken()
+                val scannedToken = scanner.next_token()
                 val expectedTokenType = typesIterator.next()
 
-                scannedToken.type.shouldBe(expectedTokenType)
+                scannedToken.shouldBeToken(expectedTokenType)
             }
 
-            val nextToken = scanner.nextToken()
-            nextToken.type.shouldBe(Token.Type.EOF)
+            val nextToken = scanner.next_token()
+            nextToken.shouldBeToken(Sym.EOF)
         }
     }
 
-    private fun String.firstToken(): Token {
+    private fun String.firstToken(): Symbol {
         val input = InputSource.fromString(this)
-        return Scanner(input).use { scanner -> scanner.nextToken() }
+        return input.open().use { Scanner(it).next_token() }
+    }
+
+    private fun Symbol.shouldBeToken(id: Int) {
+        if (this.sym != id) {
+            val expectedId = Sym.terminalNames.getOrElse(id) {
+                throw AssertionError("Expected id is not a valid token id.")
+            }
+            val actualId = Sym.terminalNames.getOrNull(this.sym)
+
+            if (actualId == null) {
+                fail("Not a valid symbol: $this")
+            } else {
+                fail("Expected $expectedId but got $actualId.")
+            }
+        }
     }
 }

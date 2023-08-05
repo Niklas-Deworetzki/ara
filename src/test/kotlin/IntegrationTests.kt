@@ -1,6 +1,6 @@
 import ara.analysis.Analysis
 import ara.input.Scanner
-import ara.input.Token
+import ara.input.Sym
 import ara.position.InputSource
 import ara.reporting.MessageFormatter
 import org.junit.jupiter.api.DynamicContainer
@@ -63,14 +63,15 @@ class IntegrationTests {
     }
 
     private fun parseTestSpecification(file: File): TestSpec =
-        Scanner(InputSource.fromFile(file)).use { scanner ->
+        InputSource.fromFile(file).open().use { reader ->
+            val scanner = Scanner(reader)
             val lines = mutableListOf<String>()
 
-            var token = scanner.nextToken()
-            while (token.type == Token.Type.COMMENT) {
-                val comment = token.value!!.trim()
+            var token = scanner.next_token()
+            while (token.sym == Sym.HASHCOMMENT) {
+                val comment = (token.value!! as String).trim()
                 lines.add(comment)
-                token = scanner.nextToken()
+                token = scanner.next_token()
             }
 
             val header = lines.firstOrNull()

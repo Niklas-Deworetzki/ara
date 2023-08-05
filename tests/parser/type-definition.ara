@@ -1,4 +1,4 @@
-// Success: Types can be declared correctly.
+# Success: Types can be declared correctly.
 
 type T = Int
 

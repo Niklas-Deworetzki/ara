@@ -1,5 +1,5 @@
-// Error: A label may only be declared once per execution direction.
-// Multiple definitions of `A' in an entry point.
+# Error: A label may only be declared once per execution direction.
+# Multiple definitions of `A' in an entry point.
 
 routine foo () -> () {
     -> A

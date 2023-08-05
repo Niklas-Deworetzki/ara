@@ -1,5 +1,5 @@
-// Error: Labels appearing in a routine must appear exactly twice.
-// Label `B' has no associated exit point.
+# Error: Labels appearing in a routine must appear exactly twice.
+# Label `B' has no associated exit point.
 
 routine foo () -> () {
     -> A

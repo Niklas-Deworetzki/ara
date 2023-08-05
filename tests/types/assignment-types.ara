@@ -1,5 +1,5 @@
-// Error: Assignment source and target must have compatible types.
-// Source and destination have different types.
+# Error: Assignment source and target must have compatible types.
+# Source and destination have different types.
 
 type A = {  }
 

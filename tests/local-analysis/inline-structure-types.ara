@@ -1,4 +1,4 @@
-// Success: Inline type structure types are allowed.
+# Success: Inline type structure types are allowed.
 
 routine foo(a: {x: Int, y: Int}) -> () {
     0 := a.x

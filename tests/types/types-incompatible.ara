@@ -1,5 +1,5 @@
-// Error: Structure types must have the same name for members to be compatible.
-// Type Int and {a: Int,b: Int} are not compatible.
+# Error: Structure types must have the same name for members to be compatible.
+# Type Int and {a: Int,b: Int} are not compatible.
 
 type A = { a: Int, b: Int }
 type B = Int

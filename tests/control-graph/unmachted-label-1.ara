@@ -1,5 +1,5 @@
-// Error: Labels appearing in a routine must appear exactly twice.
-// Label `B' has no associated entry point.
+# Error: Labels appearing in a routine must appear exactly twice.
+# Label `B' has no associated entry point.
 
 routine foo () -> () {
     (0 > 1) -> A, B

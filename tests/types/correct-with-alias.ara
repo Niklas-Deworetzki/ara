@@ -1,4 +1,4 @@
-// Success: Referring to a type via an alias is allowed.
+# Success: Referring to a type via an alias is allowed.
 
 type A = Int
 

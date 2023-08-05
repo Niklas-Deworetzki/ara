@@ -1,5 +1,5 @@
-// Error: Used variables must have been declared.
-// Unknown variable `unknown'.
+# Error: Used variables must have been declared.
+# Unknown variable `unknown'.
 
 routine foo (a: Int) -> (b: Int) {
     b := a + (unknown)

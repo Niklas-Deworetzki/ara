@@ -1,0 +1,9 @@
+# Error: Assignment destination must be integer when arithmetic modifier is present.
+# Assignment destination is not of type Int as required by modification statement.
+
+type A = {  }
+
+routine foo (b: Int) -> (a: A) {
+    a := b - (3 * 2)
+}
+

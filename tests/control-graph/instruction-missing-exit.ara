@@ -1,0 +1,9 @@
+# Error: An entry point can only be present after an exit point.
+# Entry points are only allowed to appear after an exit point.
+
+routine foo (a: Int) -> () {
+    -> L
+    L <-
+    M <-
+}
+

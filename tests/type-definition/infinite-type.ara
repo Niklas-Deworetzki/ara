@@ -1,0 +1,6 @@
+# Error: An infinite type cannot be constructed.
+# Unable to construct infinite type `Foo'.
+
+type Foo = {
+    a: Foo
+}

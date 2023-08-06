@@ -1,0 +1,6 @@
+# Error: Called routines must be known.
+# Unknown routine `unknown'.
+
+routine foo (a: Int) -> (b: Int) {
+    (b) := uncall unknown(a)
+}

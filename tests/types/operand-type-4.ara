@@ -1,0 +1,9 @@
+# Error: Operand types must be an integer.
+# Operand is not of type Int as required by comparison operator.
+
+type A = { m: Int }
+
+routine foo(a: Int, m: A) -> (b: Int, m: A) {
+    (0 <= m) -> L, R
+    L, R <- (0 == 0)
+}

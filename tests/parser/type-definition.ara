@@ -1,0 +1,8 @@
+# Success: Types can be declared correctly.
+
+type T = Int
+
+type Struct = {
+    a: Int,
+    b: Int
+}

@@ -1,0 +1,6 @@
+# Success: Referring to a type via an alias is allowed.
+
+type A = Int
+
+routine f(a: A) -> (a: Int) {
+}

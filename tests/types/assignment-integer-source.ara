@@ -1,0 +1,9 @@
+# Error: Assignment source must be integer when arithmetic modifier is present.
+# Assignment source is not of type Int as required by modification statement.
+
+type A = {  }
+
+routine foo (a: A) -> (b: Int) {
+    b := a + (3 * 2)
+}
+

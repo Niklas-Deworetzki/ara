@@ -1,0 +1,6 @@
+# Error: A variable name may appear at most once per parameter list.
+# Parameter `foo' was declared multiple times.
+# Parameter `bar' was declared multiple times.
+
+routine foo (foo, foo) -> (bar, bar) {
+}

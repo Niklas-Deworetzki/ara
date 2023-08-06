@@ -5,7 +5,8 @@ import picocli.CommandLine.Option
 class AnalysisOptions {
     @Option(
         names = ["--debug", "-d"],
-        description = ["Passes for which debug output should be printed."]
+        paramLabel = "<pass>",
+        description = ["Specify for which analysis passes debug output should be generated."]
     )
     var debugEnabledPasses: Set<String> = emptySet()
 }

@@ -8,7 +8,6 @@ import ara.analysis.live.LivenessState.Companion.meet
 import ara.control.Block
 import ara.position.Range
 import ara.reporting.Message.Companion.quoted
-import ara.storage.ResourceAllocation.asResourcePath
 import ara.storage.ResourceAllocation.asResourcePaths
 import ara.storage.ResourceAllocation.resourcesCreated
 import ara.storage.ResourceAllocation.resourcesDestroyed
@@ -140,8 +139,7 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
         }
 
         private fun initializeOrReport(expression: Syntax.ResourceExpression) {
-            val resource = expression.asResourcePath()
-            if (resource != null) {
+            for (resource in expression.asResourcePaths()) {
                 val state = currentState[resource]
                 if (state !is LivenessState.Finalized) {
                     val error =
@@ -159,8 +157,7 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
         }
 
         private fun finalizeOrReport(expression: Syntax.ResourceExpression) {
-            val resource = expression.asResourcePath()
-            if (resource != null) {
+            for (resource in expression.asResourcePaths()) {
                 val state = currentState[resource]
                 if (state !is LivenessState.Initialized) {
                     val error =

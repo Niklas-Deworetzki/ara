@@ -133,6 +133,21 @@ sealed class Syntax {
         val value: Int
     ) : ResourceExpression()
 
+    /**
+     * A literal structure. E.g.
+     * ```
+     * { x = 0, y = a }
+     * ```
+     */
+    data class StructureLiteral(
+        val members: List<Member>
+    ) : ResourceExpression() {
+        data class Member(
+            val name: Identifier,
+            val value: ResourceExpression
+        ) : Syntax()
+    }
+
 //    /**
 //     * An expression allocating a new object in memory (during forward execution)
 //     * or deleting an object from memory (during backward direction). Objects are
@@ -278,10 +293,10 @@ sealed class Syntax {
      */
     data class StructureType(
         val members: List<Member>
-    ) : Type()
-
-    data class Member(
-        val name: Identifier,
-        val type: Type
-    ) : Syntax()
+    ) : Type() {
+        data class Member(
+            val name: Identifier,
+            val type: Type
+        ) : Syntax()
+    }
 }

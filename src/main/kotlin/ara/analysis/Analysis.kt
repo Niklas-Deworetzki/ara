@@ -2,9 +2,6 @@ package ara.analysis
 
 import ara.Main
 import ara.input.InputAnalysis
-import ara.input.Parser
-import ara.input.Scanner
-import ara.input.symbol.SymbolFactory
 import ara.position.InputSource
 import ara.reporting.Message
 import ara.syntax.Syntax

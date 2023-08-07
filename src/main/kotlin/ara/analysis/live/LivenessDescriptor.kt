@@ -55,36 +55,38 @@ class LivenessDescriptor : StorageDescriptor<LivenessState> {
             node.data
 
         is InnerNode -> {
-            val initializers = mutableSetOf<Range>()
-            val finalizers = mutableSetOf<Range>()
+            val initializers = mutableSetOf<Initialized>()
+            val finalizers = mutableSetOf<Finalized>()
+            val conflicts = mutableSetOf<Conflict>()
 
             for (value in allLeafValues(node)) {
                 when (value) {
                     is Initialized ->
-                        initializers.addAll(value.initializers)
+                        initializers.add(value)
 
                     is Finalized ->
-                        finalizers.addAll(value.finalizers)
+                        finalizers.add(value)
+
+                    is Conflict ->
+                        conflicts.add(value)
 
                     Unknown ->
                         Unit // Do nothing.
-
-                    is Conflict -> {
-                        initializers.addAll(value.initializers)
-                        finalizers.addAll(value.finalizers)
-                    }
                 }
             }
 
             when {
-                initializers.isNotEmpty() && finalizers.isNotEmpty() ->
-                    Conflict(initializers, finalizers)
+                (initializers.isNotEmpty() && finalizers.isNotEmpty()) || conflicts.isNotEmpty() ->
+                    Conflict(
+                        (initializers.flatMap { it.initializers } + conflicts.flatMap { it.initializers }).toSet(),
+                        (finalizers.flatMap { it.finalizers } + conflicts.flatMap { it.finalizers }).toSet()
+                    )
 
                 initializers.isNotEmpty() ->
-                    Initialized(initializers)
+                    Initialized(initializers.flatMap { it.initializers }.toSet())
 
                 finalizers.isNotEmpty() ->
-                    Finalized(finalizers)
+                    Finalized(finalizers.flatMap { it.finalizers }.toSet())
 
                 else ->
                     Unknown

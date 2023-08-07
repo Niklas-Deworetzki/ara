@@ -144,6 +144,14 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
             is Syntax.IntegerLiteral ->
                 Type.Integer
 
+            is Syntax.StructureLiteral -> {
+                val typedMembers = this.members.map { member ->
+                    val memberType = member.value.computedType()
+                    Type.Member(member.name.name, memberType)
+                }
+                Type.Structure(typedMembers)
+            }
+
             is Syntax.MemberAccess -> {
                 val structureType = this.storage.computedType()
                 val memberType = structureType.getMemberType(this.member.name)

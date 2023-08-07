@@ -10,6 +10,7 @@ import java.util.*
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.math.exp
 
 class Interpreter(val program: Syntax.Program) : Runnable {
     private val callStack: Deque<StackFrame> = ArrayDeque()
@@ -218,39 +219,39 @@ class Interpreter(val program: Syntax.Program) : Runnable {
     }
 
     private fun evaluate(expression: Syntax.ResourceExpression): Value = when (expression) {
-        is Syntax.IntegerLiteral -> Value.Integer(expression.value)
-        is Syntax.TypedStorage -> evaluate(expression.storage)
-        is Syntax.NamedStorage -> currentStackFrame[expression.asResourcePath()!!]
-        is Syntax.MemberAccess -> {
-            val structure = evaluate(expression.storage).asStructure()
-            val memberValue = structure[expression.member.name]
-            internalAssertion(memberValue != null) {
-                "Member ${expression.member} is accessed but not present."
+        is Syntax.IntegerLiteral ->
+            Value.Integer(expression.value)
+
+        is Syntax.StructureLiteral -> {
+            val evaluatedMembers = expression.members.associate { member ->
+                member.name.name to evaluate(member.value)
             }
-            memberValue
+            Value.Structure(evaluatedMembers)
         }
+
+        is Syntax.Storage ->
+            currentStackFrame[expression.asResourcePath()]
     }
 
-    private fun initialize(resource: Syntax.ResourceExpression, value: Value) {
-        val path = resource.asResourcePath()
-        if (path != null) {
-            currentStackFrame[path] = value
-        } else {
-            val assertedValue = evaluate(resource)
-            ensureReversibility(value == assertedValue) {
-                "Values are not equal"
+    private fun initialize(resource: Syntax.ResourceExpression, value: Value): Unit = when (resource) {
+        is Syntax.IntegerLiteral ->
+            ensureReversibility(resource.value == value.asInteger()) {
+                "Expected ${resource.value} but got ${value.asInteger()}."
+            }
+
+        is Syntax.StructureLiteral -> {
+            val structure = value.asStructure()
+            for (member in resource.members) {
+                initialize(member.value, structure[member.name.name]!!)
             }
         }
+
+        is Syntax.Storage ->
+            currentStackFrame[resource.asResourcePath()] = value
     }
 
-    private fun finalize(resource: Syntax.ResourceExpression): Value {
-        val path = resource.asResourcePath()
-        return if (path != null) {
-            currentStackFrame[path]
-        } else {
-            evaluate(resource)
-        }
-    }
+    private fun finalize(resource: Syntax.ResourceExpression): Value =
+        evaluate(resource) // finalize is evaluate, since we don't actually clean up values.
 
     companion object {
         val MAIN_ROUTINE_NAME = Syntax.Identifier("main")

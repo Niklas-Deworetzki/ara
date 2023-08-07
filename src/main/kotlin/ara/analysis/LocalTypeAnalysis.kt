@@ -1,6 +1,7 @@
 package ara.analysis
 
 import ara.Direction
+import ara.analysis.type.TypeComputation
 import ara.reporting.Message
 import ara.syntax.Syntax
 import ara.syntax.Syntax.ComparisonOperator.*

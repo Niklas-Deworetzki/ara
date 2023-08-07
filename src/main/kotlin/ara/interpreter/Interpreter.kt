@@ -10,7 +10,6 @@ import java.util.*
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
-import kotlin.math.exp
 
 class Interpreter(val program: Syntax.Program) : Runnable {
     private val callStack: Deque<StackFrame> = ArrayDeque()

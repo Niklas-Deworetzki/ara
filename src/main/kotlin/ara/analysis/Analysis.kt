@@ -52,7 +52,7 @@ abstract class Analysis<T> {
 
     private class ProgramAnalysis(val input: InputSource) : Analysis<Syntax.Program>() {
         override fun runAnalysis(): Syntax.Program {
-            val program = loadProgram()
+            val program = includeAnalysis(InputAnalysis(input))
             program.environment = Builtins.environment()
 
             andThen { RoutineDefinitionAnalysis(program) }
@@ -64,8 +64,6 @@ abstract class Analysis<T> {
             return program
         }
 
-        private fun loadProgram(): Syntax.Program =
-            includeAnalysis(InputAnalysis(input))
 
         private inline fun andThen(analysisConstructor: () -> Analysis<Unit>) {
             val analysis = analysisConstructor()

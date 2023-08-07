@@ -1,5 +1,6 @@
-package ara.analysis
+package ara.analysis.type
 
+import ara.analysis.Analysis
 import ara.syntax.Syntax
 import ara.types.Environment
 import ara.types.Type

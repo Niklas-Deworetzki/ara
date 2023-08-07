@@ -1,5 +1,6 @@
 package ara.analysis
 
+import ara.analysis.type.TypeComputation
 import ara.syntax.Syntax
 import ara.types.TypeUnification
 import ara.types.TypeUnification.unify

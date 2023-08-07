@@ -1,0 +1,12 @@
+# Error: The liveness of a variable must be the same for all paths entering a block.
+# Variable `x' has conflicting initializers and finalizers.
+
+routine main() -> (x: Int) {
+    (0 == 0) -> A, B
+
+    B <-
+    x := 0
+    -> C
+
+    A, C <- (0 == 0)
+}

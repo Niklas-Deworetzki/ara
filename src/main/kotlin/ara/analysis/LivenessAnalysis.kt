@@ -44,10 +44,9 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
             for (variable in conflicts.keys.sorted()) {
                 val conflict = conflicts[variable]!!
 
-                // TODO: Check if there is no Conflict in OUT of predecessors, indicating that this is the root cause.
                 val message = reportError("Variable $variable has conflicting initializers and finalizers.")
                 for ((position, definition) in orderedConflictingDefinitions(conflict)) {
-                    message.withAdditionalInfo("A potential cause might be the $definition here:", position)
+                    message.withAdditionalInfo("Potential causes include the $definition here:", position)
                 }
             }
         }
@@ -226,6 +225,15 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
             detectedConflicts[variable] = detectedConflicts[variable]!! meet conflict
         }
 
+        private fun variableIsConflictInPredecessors(block: Block, variable: ResourcePath): Boolean {
+            for (predecessor in routine.graph.getPredecessors(block)) {
+                val variableStateAtEndOfPredecessor = routine.liveness.getOut(predecessor)[variable]
+                if (variableStateAtEndOfPredecessor is LivenessState.Conflict)
+                    return true
+            }
+            return false
+        }
+
         private fun detectConflicts() {
             for (block in routine.graph) {
                 val livenessAtEndOfBlock = routine.liveness.getOut(block)
@@ -234,7 +242,9 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
                     val path = ResourcePath.ofIdentifier(variable)
                     val potentialConflict = livenessAtEndOfBlock[path]
 
-                    if (potentialConflict is LivenessState.Conflict) {
+                    if (potentialConflict is LivenessState.Conflict &&
+                        !variableIsConflictInPredecessors(block, path)) {
+                        // Narrow down causes to the first block in which a variable becomes Conflict.
                         updateConflict(variable, potentialConflict)
                     }
                 }

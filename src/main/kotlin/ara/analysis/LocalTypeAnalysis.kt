@@ -116,6 +116,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
         private fun checkMultiAssignment(assignment: Syntax.MultiAssignment) {
             if (assignment.dstList.size != assignment.srcList.size) {
                 reportError("Assignment must have an equal number of resources on both sides.")
+                    .withPositionOf(assignment)
             }
 
             combineWith(assignment.srcList, assignment.dstList) { src, dst ->
@@ -123,7 +124,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
                 val dstType = dst.computedType()
 
                 srcType.mustBeCompatibleWith(dstType, position = src) {
-                    "Destination of assigned resource has not the same type as its destination."
+                    "Destination of assigned resource has not the same type as its source."
                 }?.withAdditionalInfo(
                     "Destination of the assignment is the resource here.",
                     position = dst.range

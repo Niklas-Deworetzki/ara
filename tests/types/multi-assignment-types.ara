@@ -1,0 +1,8 @@
+# Error: Type mismatch in assigned resources.
+# Destination of assigned resource has not the same type as its source.
+
+type X = { x: Int }
+
+routine baz(a: Int, b: Int -> e: Int, f: X) {
+    (e, f) := (a, b)
+}

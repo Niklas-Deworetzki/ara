@@ -62,7 +62,7 @@ non terminal Definition                 Definition, TypeDefinition, RoutineDefin
 non terminal List<Parameter>            ParameterList, ParameterListTail;
 non terminal Parameter                  Parameter;
 non terminal List<Instruction>          InstructionList;
-non terminal Instruction                Instruction, Assignment, Unconditional, Conditional, Call;
+non terminal Instruction                Instruction, ArithmeticAssignment, MultiAssignment, Unconditional, Conditional, Call;
 non terminal List<ResourceExpression>   ArgumentList, ArgumentListTail;
 non terminal ResourceExpression         ResourceExpression, IntegerLiteral, StructureLiteral;
 non terminal List<StructureLiteral.Member> StructureLiteralMembersList, StructureLiteralMemberListTail;
@@ -158,7 +158,9 @@ InstructionList ::= Instruction:head InstructionList:tail
                      {: RESULT = nil(); :}
                   ;
 
-Instruction ::= Assignment:result
+Instruction ::= ArithmeticAssignment:result
+                 {: RESULT = result; :}
+              | MultiAssignment:result
                  {: RESULT = result; :}
               | Unconditional:result
                  {: RESULT = result; :}
@@ -168,11 +170,15 @@ Instruction ::= Assignment:result
                  {: RESULT = result; :}
               ;
 
-Assignment ::= ResourceExpression:dst ASSIGNMENT ResourceExpression:src
-                {: RESULT = withRange(new Assignment(dst, src, null), dstleft, srcright); :}
-             | ResourceExpression:dst ASSIGNMENT ResourceExpression:src ArithmeticModifier:mod
-                {: RESULT = withRange(new Assignment(dst, src, mod), dstleft, modright); :}
-             ;
+ArithmeticAssignment ::= ResourceExpression:dst ASSIGNMENT ResourceExpression:src
+                          {: RESULT = withRange(new ArithmeticAssignment(dst, src, null), dstleft, srcright); :}
+                       | ResourceExpression:dst ASSIGNMENT ResourceExpression:src ArithmeticModifier:mod
+                          {: RESULT = withRange(new ArithmeticAssignment(dst, src, mod), dstleft, modright); :}
+                       ;
+
+MultiAssignment ::= ArgumentList:dst ASSIGNMENT ArgumentList:src
+                     {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
+                  ;
 
 Unconditional ::= ARROW_R:arrow Identifier:label
                    {: RESULT = withRange(new Unconditional(Direction.FORWARD, label), arrowleft, labelright); :}

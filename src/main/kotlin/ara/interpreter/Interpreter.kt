@@ -94,7 +94,7 @@ class Interpreter(val program: Syntax.Program) : Runnable {
 
 
     private fun executeInstruction(instruction: Syntax.Instruction) = when (instruction) {
-        is Syntax.Assignment -> {
+        is Syntax.ArithmeticAssignment -> {
             val finalized = currentDirection.choose(instruction.src, instruction.dst)
             val initialized = currentDirection.choose(instruction.dst, instruction.src)
 
@@ -105,6 +105,16 @@ class Interpreter(val program: Syntax.Program) : Runnable {
                 val value = finalize(finalized).asInteger()
                 val modifiedValue = applyModification(value, instruction.arithmetic)
                 initialize(initialized, modifiedValue)
+            }
+        }
+
+        is Syntax.MultiAssignment -> {
+            val finalized = currentDirection.choose(instruction.srcList, instruction.dstList)
+            val initialized = currentDirection.choose(instruction.dstList, instruction.srcList)
+
+            val finalizedValues = finalized.map(::finalize)
+            combineWith(initialized, finalizedValues) { resource, value ->
+                initialize(resource, value)
             }
         }
 

@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Structure literals to create structures without manually implemented constructors.
 - Improved error error messages for conflicts detected during liveness analysis.
+- An instruction supporting the assignment of multiple resources at once.
 
 ### Fixed
 

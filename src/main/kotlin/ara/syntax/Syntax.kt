@@ -67,10 +67,21 @@ sealed class Syntax {
      *  dst := src
      * ```
      */
-    data class Assignment(
+    data class ArithmeticAssignment(
         val dst: ResourceExpression,
         val src: ResourceExpression,
         val arithmetic: ArithmeticModifier?
+    ) : Instruction()
+
+    /**
+     * An assignment exchanging multiple values, written as
+     * ```
+     * (dst1, dst2, ..., dstN) := (src1, src2, ..., srcN)
+     * ```
+     */
+    data class MultiAssignment(
+        val dstList: List<ResourceExpression>,
+        val srcList: List<ResourceExpression>
     ) : Instruction()
 
     /**

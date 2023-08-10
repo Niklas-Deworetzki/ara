@@ -12,6 +12,9 @@ import ara.types.TypeUnification
 import ara.types.TypeUnification.unify
 import ara.utils.combineWith
 
+/**
+ * Analysis pass used to detect type errors within a routine.
+ */
 class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
 
     override fun runAnalysis() {
@@ -68,8 +71,11 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
         fun check() {
             for (instruction in routine.body) {
                 when (instruction) {
-                    is Syntax.Assignment ->
-                        checkAssignment(instruction)
+                    is Syntax.ArithmeticAssignment ->
+                        checkArithmeticAssignment(instruction)
+
+                    is Syntax.MultiAssignment ->
+                        checkMultiAssignment(instruction)
 
                     is Syntax.Call ->
                         checkCall(instruction)
@@ -83,7 +89,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
             }
         }
 
-        private fun checkAssignment(assignment: Syntax.Assignment) {
+        private fun checkArithmeticAssignment(assignment: Syntax.ArithmeticAssignment) {
             val srcType = assignment.src.computedType()
             val dstType = assignment.dst.computedType()
 
@@ -104,6 +110,24 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
                 arithmeticType.mustBeCompatibleWith(Type.Integer, assignment.arithmetic) {
                     "Arithmetic expression is not of type ${Type.Integer} as required by modification statement."
                 }
+            }
+        }
+
+        private fun checkMultiAssignment(assignment: Syntax.MultiAssignment) {
+            if (assignment.dstList.size != assignment.srcList.size) {
+                reportError("Assignment must have an equal number of resources on both sides.")
+            }
+
+            combineWith(assignment.srcList, assignment.dstList) { src, dst ->
+                val srcType = src.computedType()
+                val dstType = dst.computedType()
+
+                srcType.mustBeCompatibleWith(dstType, position = src) {
+                    "Destination of assigned resource has not the same type as its destination."
+                }?.withAdditionalInfo(
+                    "Destination of the assignment is the resource here.",
+                    position = dst.range
+                )
             }
         }
 
@@ -227,8 +251,9 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
     }
 
 
-    private fun Type.mustBeCompatibleWith(expectedType: Type, position: Syntax, messageHint: (() -> String)? = null) {
-        val typeError = unify(this, expectedType) ?: return // Return if unification succeeds.
+    private fun Type.mustBeCompatibleWith(expectedType: Type, position: Syntax, messageHint: (() -> String)? = null):
+            Message? {
+        val typeError = unify(this, expectedType) ?: return null // Return if unification succeeds.
 
         val messageHints = mutableListOf<String>()
         if (messageHint != null) messageHints.add(messageHint())
@@ -266,6 +291,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>() 
         for (hint in messageHints.drop(1)) {
             error.withAdditionalInfo("Cause: $hint")
         }
+        return error
     }
 
     private fun Type.isInstantiated(): Boolean = TypeIsInstantiated.evaluate(this)

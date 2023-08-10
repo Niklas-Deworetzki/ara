@@ -30,13 +30,16 @@ object ResourceAllocation {
         this.resourcesCreated().flatMap { it.asResourcePaths() }
 
     fun Syntax.Instruction.resourcesCreated(): Collection<Syntax.ResourceExpression> = when (this) {
-        is Syntax.Assignment ->
+        is Syntax.ArithmeticAssignment ->
             listOf(this.dst)
+
+        is Syntax.MultiAssignment ->
+            this.dstList
 
         is Syntax.Call ->
             this.dstList
 
-        else ->
+        is Syntax.Conditional, is Syntax.Unconditional ->
             emptyList()
     }
 
@@ -44,13 +47,16 @@ object ResourceAllocation {
         this.resourcesDestroyed().flatMap { it.asResourcePaths() }
 
     fun Syntax.Instruction.resourcesDestroyed(): Collection<Syntax.ResourceExpression> = when (this) {
-        is Syntax.Assignment ->
+        is Syntax.ArithmeticAssignment ->
             listOf(this.src)
+
+        is Syntax.MultiAssignment ->
+            this.srcList
 
         is Syntax.Call ->
             this.srcList
 
-        else ->
+        is Syntax.Conditional, is Syntax.Unconditional ->
             emptyList()
     }
 
@@ -65,19 +71,5 @@ object ResourceAllocation {
     fun Syntax.ConditionalExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {
         is Syntax.ComparativeBinary ->
             this.lhs.asResourcePaths() + this.rhs.asResourcePaths()
-    }
-
-    fun Syntax.Instruction.variablesUsed(): Collection<ResourcePath> = when (this) {
-        is Syntax.Assignment ->
-            this.arithmetic?.value?.asResourcePaths() ?: emptySet()
-
-        is Syntax.Call ->
-            emptySet()
-
-        is Syntax.Conditional ->
-            this.condition.asResourcePaths()
-
-        is Syntax.Unconditional ->
-            emptySet()
     }
 }

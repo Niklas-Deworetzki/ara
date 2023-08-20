@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [indev-2] - 2023-08-20
+
 ### Added
 
 - Structure literals to create structures without manually implemented constructors.

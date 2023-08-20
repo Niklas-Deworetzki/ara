@@ -27,7 +27,7 @@ class Interpreter(val program: Syntax.Program) : Runnable {
         val entryPoint = findEntryPoint()
 
         try {
-            val inputValues = entryPoint.inputParameterTypes.map { Value.defaultValueForType(it) }
+            val inputValues = entryPoint.signature.inputTypes.map { Value.defaultValueForType(it) }
             val outputValues = executeRoutine(Direction.FORWARD, entryPoint, inputValues)
             combineWith(entryPoint.outputParameters.map { it.name }, outputValues) { parameter, value ->
                 println("${parameter.name} = $value")

@@ -8,6 +8,7 @@ import ara.control.ControlGraph
 import ara.position.Range
 import ara.reporting.Message
 import ara.types.Environment
+import ara.types.Signature
 
 sealed class Syntax {
     lateinit var range: Range
@@ -39,9 +40,8 @@ sealed class Syntax {
         val body: List<Instruction>
     ) : Definition() {
         lateinit var localEnvironment: Environment
-        lateinit var inputParameterTypes: List<ara.types.Type>
-        lateinit var outputParameterTypes: List<ara.types.Type>
         lateinit var graph: ControlGraph
+        lateinit var signature: Signature
         lateinit var liveness: DataflowSolution<Block, LivenessDescriptor>
     }
 
@@ -132,7 +132,7 @@ sealed class Syntax {
     /**
      * An expression that can be used to initialize or finalize some resource.
      */
-    sealed class ResourceExpression : Syntax()
+    sealed class ResourceExpression : Typeable()
 
     /**
      * A literal integer. E.g.
@@ -240,7 +240,7 @@ sealed class Syntax {
     /**
      * An evaluable expression that neither initializes nor finalizes storage.
      */
-    sealed class ArithmeticExpression : Syntax()
+    sealed class ArithmeticExpression : Typeable()
 
     /**
      * A binary expression.
@@ -265,7 +265,7 @@ sealed class Syntax {
     /**
      * An evaluable expression that neither initializes nor finalizes storage.
      */
-    sealed class ConditionalExpression : Syntax()
+    sealed class ConditionalExpression : Typeable()
 
     /**
      * A binary comparison.

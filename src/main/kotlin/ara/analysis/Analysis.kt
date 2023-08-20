@@ -2,9 +2,6 @@ package ara.analysis
 
 import ara.Main
 import ara.input.InputAnalysis
-import ara.input.Parser
-import ara.input.Scanner
-import ara.input.symbol.SymbolFactory
 import ara.position.InputSource
 import ara.reporting.Message
 import ara.syntax.Syntax
@@ -55,20 +52,19 @@ abstract class Analysis<T> {
 
     private class ProgramAnalysis(val input: InputSource) : Analysis<Syntax.Program>() {
         override fun runAnalysis(): Syntax.Program {
-            val program = loadProgram()
+            val program = includeAnalysis(InputAnalysis(input))
             program.environment = Builtins.environment()
 
             andThen { RoutineDefinitionAnalysis(program) }
             andThen { ControlGraphBuilder(program) }
             andThen { TypeDefinitionAnalysis(program) }
             andThen { LocalDeclarationAnalysis(program) }
+            andThen { ParameterTypeAnalysis(program) }
             andThen { LocalTypeAnalysis(program) }
             andThen { LivenessAnalysis(program) }
             return program
         }
 
-        private fun loadProgram(): Syntax.Program =
-            includeAnalysis(InputAnalysis(input))
 
         private inline fun andThen(analysisConstructor: () -> Analysis<Unit>) {
             val analysis = analysisConstructor()

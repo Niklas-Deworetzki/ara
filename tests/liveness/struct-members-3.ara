@@ -1,0 +1,31 @@
+# Error: The liveness of a variable must be the same for all paths entering a block.
+# Variable `o' has conflicting initializers and finalizers.
+
+type Foo = {
+    x: Int,
+    y: Int
+}
+
+routine main(x: Int -> x, o: Foo) {
+    x == 0 -> L, R
+
+    L <-
+    o.x := 0
+    o.x := o.x + 1
+    -> A
+
+    R <-
+    o.y := 0
+    -> B
+
+    A, B <- x == 0
+    o.x := o.x + 1
+    -> E
+
+    E <-
+    o.x := o.x + 1
+    -> F
+
+    F <-
+    o.x := o.x + 1
+}

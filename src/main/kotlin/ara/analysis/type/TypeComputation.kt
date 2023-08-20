@@ -1,5 +1,6 @@
-package ara.analysis
+package ara.analysis.type
 
+import ara.analysis.Analysis
 import ara.syntax.Syntax
 import ara.types.Environment
 import ara.types.Type
@@ -31,5 +32,10 @@ class TypeComputation(
         reportError("Unknown type $name.")
             .withPositionOf(name)
         return Type.Variable()
+    }
+
+    companion object {
+        fun Analysis<*>.computedType(type: Syntax.Type, environment: Environment): Type =
+            includeAnalysis(TypeComputation(environment, type))
     }
 }

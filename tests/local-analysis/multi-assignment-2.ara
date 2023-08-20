@@ -1,0 +1,6 @@
+# Error: Right hand side of multi-assignment has fewer resources.
+# Assignment must have an equal number of resources on both sides.
+
+routine bar(a: Int, b: Int, c: Int -> e: Int, f: Int, g: Int) {
+    (e, f, g) := (a, b)
+}

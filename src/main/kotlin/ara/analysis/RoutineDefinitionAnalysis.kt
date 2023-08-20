@@ -3,6 +3,9 @@ package ara.analysis
 import ara.syntax.Syntax
 import ara.syntax.extensions.routines
 
+/**
+ * Analysis pass collecting the names of all defined routines.
+ */
 class RoutineDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
 
     override fun runAnalysis() {

@@ -1,5 +1,5 @@
 # Error: Structure types must have the same size to be compatible.
-# Structure types are not compatible as they have different sizes.
+# Type defined for parameter is not compatible with actual type.
 
 type A = { a: Int, b: Int }
 type B = { a: Int, b: A, c: Int }

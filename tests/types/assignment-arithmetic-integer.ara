@@ -1,5 +1,5 @@
 # Error: Assignment's arithmetic modifier must be an integer.
-# Arithmetic expression is not of type Int as required by modification statement.
+# Arithmetic expression must be of type Int as required by arithmetic assignment.
 
 type A = {  }
 

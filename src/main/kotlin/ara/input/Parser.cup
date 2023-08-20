@@ -55,28 +55,30 @@ terminal    ARROW_L, ARROW_R;
 terminal    PAREN_L, PAREN_R;
 terminal    CURL_L, CURL_R;
 
-non terminal Program                Program;
-non terminal Identifier             Identifier;
-non terminal List<Definition>       GlobalDefinitionList;
-non terminal Definition             Definition, TypeDefinition, RoutineDefinition;
-non terminal List<Parameter>        ParameterList, ParameterListTail;
-non terminal Parameter              Parameter;
-non terminal List<Instruction>      InstructionList;
-non terminal Instruction            Instruction, Assignment, Unconditional, Conditional, Call;
-non terminal List<ResourceExpression> ArgumentList, ArgumentListTail;
-non terminal ResourceExpression     ResourceExpression, IntegerLiteral;
-non terminal Storage                Storage, BaseStorage, NamedStorage;
+non terminal Program                    Program;
+non terminal Identifier                 Identifier;
+non terminal List<Definition>           GlobalDefinitionList;
+non terminal Definition                 Definition, TypeDefinition, RoutineDefinition;
+non terminal List<Parameter>            ParameterList, ParameterListTail;
+non terminal Parameter                  Parameter;
+non terminal List<Instruction>          InstructionList;
+non terminal Instruction                Instruction, ArithmeticAssignment, MultiAssignment, Unconditional, Conditional, Call;
+non terminal List<ResourceExpression>   ArgumentList, ArgumentListTail;
+non terminal ResourceExpression         ResourceExpression, IntegerLiteral, StructureLiteral;
+non terminal List<StructureLiteral.Member> StructureLiteralMembersList, StructureLiteralMemberListTail;
+non terminal StructureLiteral.Member    StructureLiteralMember;
+non terminal Storage                    Storage, BaseStorage, NamedStorage;
 non terminal List<Function<Storage, Storage>> StorageExtensions;
 non terminal Function<Storage, Storage> TypedStorageExtension, MemberAccessExtension;
-non terminal ArithmeticModifier     ArithmeticModifier;
-non terminal ArithmeticExpression   ArithmeticExpression, ArithmeticBinary, ArithmeticValue;
-non terminal ConditionalExpression  ConditionalExpression, ComparativeBinary;
-non terminal Type                   Type, NamedType, StructureType;
-non terminal List<Member>           MemberList, MemberListTail;
-non terminal Member                 Member;
-non terminal ModificationOperator   ModificationOperator;
-non terminal ComparisonOperator     ComparisonOperator;
-non terminal BinaryOperator         BinaryOperator;
+non terminal ArithmeticModifier         ArithmeticModifier;
+non terminal ArithmeticExpression       ArithmeticExpression, ArithmeticBinary, ArithmeticValue;
+non terminal ConditionalExpression      ConditionalExpression, ComparativeBinary;
+non terminal Type                       Type, NamedType, StructureType;
+non terminal List<StructureType.Member> StructureTypeMemberList, StructureTypeMemberListTail;
+non terminal StructureType.Member       StructureTypeMember;
+non terminal ModificationOperator       ModificationOperator;
+non terminal ComparisonOperator         ComparisonOperator;
+non terminal BinaryOperator             BinaryOperator;
 non terminal IgnoredCommentLines;
 non terminal Epsilon;
 
@@ -156,7 +158,9 @@ InstructionList ::= Instruction:head InstructionList:tail
                      {: RESULT = nil(); :}
                   ;
 
-Instruction ::= Assignment:result
+Instruction ::= ArithmeticAssignment:result
+                 {: RESULT = result; :}
+              | MultiAssignment:result
                  {: RESULT = result; :}
               | Unconditional:result
                  {: RESULT = result; :}
@@ -166,11 +170,15 @@ Instruction ::= Assignment:result
                  {: RESULT = result; :}
               ;
 
-Assignment ::= ResourceExpression:dst ASSIGNMENT ResourceExpression:src
-                {: RESULT = withRange(new Assignment(dst, src, null), dstleft, srcright); :}
-             | ResourceExpression:dst ASSIGNMENT ResourceExpression:src ArithmeticModifier:mod
-                {: RESULT = withRange(new Assignment(dst, src, mod), dstleft, modright); :}
-             ;
+ArithmeticAssignment ::= ResourceExpression:dst ASSIGNMENT ResourceExpression:src
+                          {: RESULT = withRange(new ArithmeticAssignment(dst, src, null), dstleft, srcright); :}
+                       | ResourceExpression:dst ASSIGNMENT ResourceExpression:src ArithmeticModifier:mod
+                          {: RESULT = withRange(new ArithmeticAssignment(dst, src, mod), dstleft, modright); :}
+                       ;
+
+MultiAssignment ::= ArgumentList:dst ASSIGNMENT ArgumentList:src
+                     {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
+                  ;
 
 Unconditional ::= ARROW_R:arrow Identifier:label
                    {: RESULT = withRange(new Unconditional(Direction.FORWARD, label), arrowleft, labelright); :}
@@ -208,9 +216,31 @@ ArgumentList ::= PAREN_L ResourceExpression:head ArgumentListTail:tail PAREN_R
 
 ResourceExpression ::= IntegerLiteral:result
                         {: RESULT = result; :}
+                     | StructureLiteral:result
+                        {: RESULT = result; :}
                      | Storage:result
                         {: RESULT = result; :}
                      ;
+
+StructureLiteral ::= CURL_L:l StructureLiteralMembersList:members CURL_R:r
+                      {: RESULT = withRange(new StructureLiteral(members), lleft, rright); :}
+                   ;
+
+StructureLiteralMembersList ::= StructureLiteralMember:head StructureLiteralMemberListTail:tail
+                                 {: RESULT = cons(head, tail); :}
+                              | Epsilon
+                                 {: RESULT = nil(); :}
+                              ;
+
+StructureLiteralMemberListTail ::= COMMA StructureLiteralMember:head StructureLiteralMemberListTail:tail
+                                    {: RESULT = cons(head, tail); :}
+                                 | Epsilon
+                                    {: RESULT = nil(); :}
+                                 ;
+
+StructureLiteralMember ::= Identifier:name EQ ResourceExpression:value
+                            {: RESULT = withRange(new StructureLiteral.Member(name, value), nameleft, valueright); :}
+                         ;
 
 IntegerLiteral ::= INTEGER:value
                     {: RESULT = withRange(new IntegerLiteral(value), valueleft, valueright); :}
@@ -298,25 +328,25 @@ NamedType ::= Identifier:name
                {: RESULT = withRange(new NamedType(name), nameleft, nameright); :}
             ;
 
-StructureType ::= CURL_L:l MemberList:members CURL_R:r
+StructureType ::= CURL_L:l StructureTypeMemberList:members CURL_R:r
                    {: RESULT = withRange(new StructureType(members), lleft, rright); :}
                 ;
 
-MemberList ::= Member:head MemberListTail:tail
-                {: RESULT = cons(head, tail); :}
-             | Epsilon
-                {: RESULT = nil(); :}
-             ;
+StructureTypeMemberList ::= StructureTypeMember:head StructureTypeMemberListTail:tail
+                             {: RESULT = cons(head, tail); :}
+                          | Epsilon
+                             {: RESULT = nil(); :}
+                          ;
 
-MemberListTail ::= COMMA Member:head MemberListTail:tail
-                    {: RESULT = cons(head, tail); :}
-                 | Epsilon
-                    {: RESULT = nil(); :}
-                 ;
+StructureTypeMemberListTail ::= COMMA StructureTypeMember:head StructureTypeMemberListTail:tail
+                                 {: RESULT = cons(head, tail); :}
+                              | Epsilon
+                                 {: RESULT = nil(); :}
+                              ;
 
-Member ::= Identifier:name COLON Type:type
-            {: RESULT = withRange(new Member(name, type), nameleft, typeright); :}
-         ;
+StructureTypeMember ::= Identifier:name COLON Type:type
+                         {: RESULT = withRange(new StructureType.Member(name, type), nameleft, typeright); :}
+                      ;
 
 //
 //

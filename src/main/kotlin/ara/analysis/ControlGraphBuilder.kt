@@ -10,6 +10,13 @@ import ara.utils.sublist
 
 private typealias InstructionBuffer = MutableList<Syntax.Instruction>
 
+/**
+ * Analysis pass building the control graph for every defined routine.
+ *
+ * Control graphs are constructed in two steps:
+ *  1. Routines a split into [Block]s of instructions between (and including) entry and exit points.
+ *  2. Basic blocks within a routine are connected via their labels.
+ */
 class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>() {
 
     override fun runAnalysis() {

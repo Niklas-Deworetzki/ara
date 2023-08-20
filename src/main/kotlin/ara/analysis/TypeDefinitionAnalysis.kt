@@ -1,9 +1,13 @@
 package ara.analysis
 
+import ara.analysis.type.TypeComputation
 import ara.syntax.Syntax
 import ara.types.TypeUnification
 import ara.types.TypeUnification.unify
 
+/**
+ * Analysis pass collecting all user-defined types.
+ */
 class TypeDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
 
     override fun runAnalysis() {

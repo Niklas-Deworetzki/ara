@@ -75,7 +75,11 @@ class InputAnalysis(val source: InputSource) : Analysis<Syntax.Program>() {
             parser.reporter = ErrorMessageProducingReporter()
 
             try {
-                parser.parse().value as Syntax.Program
+                val parseResult = when {
+                    isDebugEnabled -> parser.debug_parse()
+                    else -> parser.parse()
+                }
+                parseResult.value as Syntax.Program
             } catch (exception: Exception) {
                 reportError(UNRECOVERABLE_SYNTAX_ERRORS)
                 Syntax.Program(emptyList())

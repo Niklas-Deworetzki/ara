@@ -1,5 +1,5 @@
 # Error: Operand types must be the same.
-# Operands are not of the same type as required by equality operator.
+# Operands must be of the same type as required by equality operator.
 
 type A = { m: Int }
 

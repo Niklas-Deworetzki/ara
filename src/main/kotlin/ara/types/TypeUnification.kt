@@ -69,5 +69,22 @@ object TypeUnification {
             val bMember: Type.Member,
             val cause: Error
         ) : Error
+
+        fun unfold(): List<Error> {
+            val errorTrace = mutableListOf<Error>()
+            var cause: Error? = this
+
+            while (cause != null) {
+                errorTrace.add(cause)
+                cause = when (cause) {
+                    is DifferentMemberTypes ->
+                        cause.cause
+
+                    RecursiveType, is NotUnifiable, is DifferentMemberNames, is DifferentStructSize ->
+                        null
+                }
+            }
+            return errorTrace
+        }
     }
 }

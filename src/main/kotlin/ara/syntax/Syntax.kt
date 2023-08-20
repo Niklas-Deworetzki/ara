@@ -8,6 +8,7 @@ import ara.control.ControlGraph
 import ara.position.Range
 import ara.reporting.Message
 import ara.types.Environment
+import ara.types.Signature
 
 sealed class Syntax {
     lateinit var range: Range
@@ -39,9 +40,8 @@ sealed class Syntax {
         val body: List<Instruction>
     ) : Definition() {
         lateinit var localEnvironment: Environment
-        lateinit var inputParameterTypes: List<ara.types.Type>
-        lateinit var outputParameterTypes: List<ara.types.Type>
         lateinit var graph: ControlGraph
+        lateinit var signature: Signature
         lateinit var liveness: DataflowSolution<Block, LivenessDescriptor>
     }
 
@@ -67,10 +67,21 @@ sealed class Syntax {
      *  dst := src
      * ```
      */
-    data class Assignment(
+    data class ArithmeticAssignment(
         val dst: ResourceExpression,
         val src: ResourceExpression,
         val arithmetic: ArithmeticModifier?
+    ) : Instruction()
+
+    /**
+     * An assignment exchanging multiple values, written as
+     * ```
+     * (dst1, dst2, ..., dstN) := (src1, src2, ..., srcN)
+     * ```
+     */
+    data class MultiAssignment(
+        val dstList: List<ResourceExpression>,
+        val srcList: List<ResourceExpression>
     ) : Instruction()
 
     /**
@@ -121,7 +132,7 @@ sealed class Syntax {
     /**
      * An expression that can be used to initialize or finalize some resource.
      */
-    sealed class ResourceExpression : Syntax()
+    sealed class ResourceExpression : Typeable()
 
     /**
      * A literal integer. E.g.
@@ -132,6 +143,21 @@ sealed class Syntax {
     data class IntegerLiteral(
         val value: Int
     ) : ResourceExpression()
+
+    /**
+     * A literal structure. E.g.
+     * ```
+     * { x = 0, y = a }
+     * ```
+     */
+    data class StructureLiteral(
+        val members: List<Member>
+    ) : ResourceExpression() {
+        data class Member(
+            val name: Identifier,
+            val value: ResourceExpression
+        ) : Syntax()
+    }
 
 //    /**
 //     * An expression allocating a new object in memory (during forward execution)
@@ -214,7 +240,7 @@ sealed class Syntax {
     /**
      * An evaluable expression that neither initializes nor finalizes storage.
      */
-    sealed class ArithmeticExpression : Syntax()
+    sealed class ArithmeticExpression : Typeable()
 
     /**
      * A binary expression.
@@ -239,7 +265,7 @@ sealed class Syntax {
     /**
      * An evaluable expression that neither initializes nor finalizes storage.
      */
-    sealed class ConditionalExpression : Syntax()
+    sealed class ConditionalExpression : Typeable()
 
     /**
      * A binary comparison.
@@ -278,10 +304,10 @@ sealed class Syntax {
      */
     data class StructureType(
         val members: List<Member>
-    ) : Type()
-
-    data class Member(
-        val name: Identifier,
-        val type: Type
-    ) : Syntax()
+    ) : Type() {
+        data class Member(
+            val name: Identifier,
+            val type: Type
+        ) : Syntax()
+    }
 }

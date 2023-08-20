@@ -27,7 +27,7 @@ class Interpreter(val program: Syntax.Program) : Runnable {
         val entryPoint = findEntryPoint()
 
         try {
-            val inputValues = entryPoint.inputParameterTypes.map { Value.defaultValueForType(it) }
+            val inputValues = entryPoint.signature.inputTypes.map { Value.defaultValueForType(it) }
             val outputValues = executeRoutine(Direction.FORWARD, entryPoint, inputValues)
             combineWith(entryPoint.outputParameters.map { it.name }, outputValues) { parameter, value ->
                 println("${parameter.name} = $value")
@@ -94,7 +94,7 @@ class Interpreter(val program: Syntax.Program) : Runnable {
 
 
     private fun executeInstruction(instruction: Syntax.Instruction) = when (instruction) {
-        is Syntax.Assignment -> {
+        is Syntax.ArithmeticAssignment -> {
             val finalized = currentDirection.choose(instruction.src, instruction.dst)
             val initialized = currentDirection.choose(instruction.dst, instruction.src)
 
@@ -105,6 +105,16 @@ class Interpreter(val program: Syntax.Program) : Runnable {
                 val value = finalize(finalized).asInteger()
                 val modifiedValue = applyModification(value, instruction.arithmetic)
                 initialize(initialized, modifiedValue)
+            }
+        }
+
+        is Syntax.MultiAssignment -> {
+            val finalized = currentDirection.choose(instruction.srcList, instruction.dstList)
+            val initialized = currentDirection.choose(instruction.dstList, instruction.srcList)
+
+            val finalizedValues = finalized.map(::finalize)
+            combineWith(initialized, finalizedValues) { resource, value ->
+                initialize(resource, value)
             }
         }
 
@@ -218,39 +228,39 @@ class Interpreter(val program: Syntax.Program) : Runnable {
     }
 
     private fun evaluate(expression: Syntax.ResourceExpression): Value = when (expression) {
-        is Syntax.IntegerLiteral -> Value.Integer(expression.value)
-        is Syntax.TypedStorage -> evaluate(expression.storage)
-        is Syntax.NamedStorage -> currentStackFrame[expression.asResourcePath()!!]
-        is Syntax.MemberAccess -> {
-            val structure = evaluate(expression.storage).asStructure()
-            val memberValue = structure[expression.member.name]
-            internalAssertion(memberValue != null) {
-                "Member ${expression.member} is accessed but not present."
+        is Syntax.IntegerLiteral ->
+            Value.Integer(expression.value)
+
+        is Syntax.StructureLiteral -> {
+            val evaluatedMembers = expression.members.associate { member ->
+                member.name.name to evaluate(member.value)
             }
-            memberValue
+            Value.Structure(evaluatedMembers)
         }
+
+        is Syntax.Storage ->
+            currentStackFrame[expression.asResourcePath()]
     }
 
-    private fun initialize(resource: Syntax.ResourceExpression, value: Value) {
-        val path = resource.asResourcePath()
-        if (path != null) {
-            currentStackFrame[path] = value
-        } else {
-            val assertedValue = evaluate(resource)
-            ensureReversibility(value == assertedValue) {
-                "Values are not equal"
+    private fun initialize(resource: Syntax.ResourceExpression, value: Value): Unit = when (resource) {
+        is Syntax.IntegerLiteral ->
+            ensureReversibility(resource.value == value.asInteger()) {
+                "Expected ${resource.value} but got ${value.asInteger()}."
+            }
+
+        is Syntax.StructureLiteral -> {
+            val structure = value.asStructure()
+            for (member in resource.members) {
+                initialize(member.value, structure[member.name.name]!!)
             }
         }
+
+        is Syntax.Storage ->
+            currentStackFrame[resource.asResourcePath()] = value
     }
 
-    private fun finalize(resource: Syntax.ResourceExpression): Value {
-        val path = resource.asResourcePath()
-        return if (path != null) {
-            currentStackFrame[path]
-        } else {
-            evaluate(resource)
-        }
-    }
+    private fun finalize(resource: Syntax.ResourceExpression): Value =
+        evaluate(resource) // finalize is evaluate, since we don't actually clean up values.
 
     companion object {
         val MAIN_ROUTINE_NAME = Syntax.Identifier("main")

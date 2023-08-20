@@ -6,7 +6,7 @@
 
     <artifactId>ara</artifactId>
     <groupId>deworetzki.niklas</groupId>
-    <version>indev-1</version>
+    <version>indev-2</version>
     <packaging>jar</packaging>
 
     <name>ara</name>

@@ -3,6 +3,12 @@ package ara.analysis
 import ara.syntax.Syntax
 import ara.types.Environment
 
+/**
+ * Analysis pass collecting all user-defined variables within routines.
+ *
+ * Variables are either defined as part of a routine's parameter lists or implicitly
+ * as the source or target of an assignment.
+ */
 class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
     private lateinit var currentScope: Environment
 
@@ -30,10 +36,13 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
         is Syntax.TypedStorage ->
             declare(expression.storage)
 
-        is Syntax.MemberAccess ->
+        is Syntax.MemberAccess -> // TODO: Perhaps we should not allow the declaration of variables as part of a member access...
             declare(expression.storage)
 
         is Syntax.IntegerLiteral ->
+            Unit
+
+        is Syntax.StructureLiteral ->
             Unit
     }
 
@@ -57,9 +66,14 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
     }
 
     private fun declareFromInstruction(instruction: Syntax.Instruction) = when (instruction) {
-        is Syntax.Assignment -> {
+        is Syntax.ArithmeticAssignment -> {
             declare(instruction.src)
             declare(instruction.dst)
+        }
+
+        is Syntax.MultiAssignment -> {
+            instruction.srcList.forEach(::declare)
+            instruction.dstList.forEach(::declare)
         }
 
         is Syntax.Call -> {

@@ -68,7 +68,7 @@ interface TypeCheckingMixin {
     ): String {
         val maximumHeaderLength = max(header.length, additionalHeaderForPadding.length)
         val padding = " ".repeat(maximumHeaderLength - header.length)
-        return "$header:$padding$type"
+        return "$header: $padding$type"
     }
 
     private fun formatTypeError(error: TypeUnification.Error): String = when (error) {

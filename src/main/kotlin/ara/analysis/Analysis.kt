@@ -59,6 +59,7 @@ abstract class Analysis<T> {
             andThen { ControlGraphBuilder(program) }
             andThen { TypeDefinitionAnalysis(program) }
             andThen { LocalDeclarationAnalysis(program) }
+            andThen { ParameterTypeAnalysis(program) }
             andThen { LocalTypeAnalysis(program) }
             andThen { LivenessAnalysis(program) }
             return program

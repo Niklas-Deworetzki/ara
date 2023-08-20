@@ -33,4 +33,9 @@ class TypeComputation(
             .withPositionOf(name)
         return Type.Variable()
     }
+
+    companion object {
+        fun Analysis<*>.computedType(type: Syntax.Type, environment: Environment): Type =
+            includeAnalysis(TypeComputation(environment, type))
+    }
 }

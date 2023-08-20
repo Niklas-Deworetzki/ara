@@ -1,5 +1,5 @@
 # Error: Assignment source must be integer when arithmetic modifier is present.
-# Assignment source is not of type Int as required by modification statement.
+# Assignment source must be of type Int as required by arithmetic modifier.
 
 type A = {  }
 

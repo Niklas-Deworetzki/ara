@@ -1,5 +1,5 @@
 # Error: Type mismatch in assigned resources.
-# Destination of assigned resource has not the same type as its source.
+# Assignment source and destination must have compatible types.
 
 type X = { x: Int }
 

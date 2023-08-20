@@ -1,5 +1,5 @@
 # Error: Member accesses require a member to be present.
-# Type does not have a member named `unknown'.
+# Type {x: Int} does not have a member named `unknown'.
 
 type A = { x: Int }
 

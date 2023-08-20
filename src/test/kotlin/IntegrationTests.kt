@@ -29,13 +29,13 @@ class IntegrationTests {
         else -> {
             val specification = parseTestSpecification(file)
             DynamicTest.dynamicTest(file.name + ": " + specification.description) {
-                verifyTestProgram(specification, file)
+                verify(specification)
             }
         }
     }
 
-    private fun verifyTestProgram(specification: TestSpec, file: File) {
-        val analysis = Analysis.ofInput(InputSource.fromFile(file))
+    private fun verify(specification: TestSpecification) {
+        val analysis = Analysis.ofInput(InputSource.fromFile(specification.file))
 
         analysis.runAnalysis()
         for (error in analysis.reportedErrors) {
@@ -43,26 +43,33 @@ class IntegrationTests {
         }
 
         when (specification) {
-            is PositiveTest ->
-                assert(!analysis.hasReportedErrors) {
-                    "Analysis should not have reported errors, but ${analysis.reportedErrors.size} were found!"
+            is PositiveTest -> {
+                val unexpectedErrors = analysis.reportedErrors
+                if (unexpectedErrors.isNotEmpty()) {
+                    throw TestFailure(
+                        specification,
+                        "Analysis should not have reported errors, but ${unexpectedErrors.size} were found.",
+                        unexpectedErrors = unexpectedErrors.map { it.message }
+                    )
                 }
+            }
 
             is NegativeTest -> {
-                assert(specification.errors.isNotEmpty()) {
-                    "Negative tests must specify at least 1 expected error."
-                }
+                val missingErrors = specification.errors
+                    .filterNot { error -> analysis.reportedErrors.any { it.message == error } }
 
-                for (error in specification.errors) {
-                    assert(analysis.reportedErrors.any { it.message == error }) {
-                        "Analysis should report at least one error with message: $error"
-                    }
+                if (missingErrors.isNotEmpty()) {
+                    throw TestFailure(
+                        specification,
+                        "Analysis should report at least ${missingErrors.size} unreported errors.",
+                        missingErrors = missingErrors
+                    )
                 }
             }
         }
     }
 
-    private fun parseTestSpecification(file: File): TestSpec =
+    private fun parseTestSpecification(file: File): TestSpecification =
         InputSource.fromFile(file).open().use { reader ->
             val scanner = Scanner(reader)
             val lines = mutableListOf<String>()
@@ -76,18 +83,19 @@ class IntegrationTests {
 
             val header = lines.firstOrNull()
             when {
-                header != null && header.startsWith(POSITIVE_TEST_HEADER) ->
-                    PositiveTest(header.substring(POSITIVE_TEST_HEADER.length).trim())
+                header != null && header.startsWith(POSITIVE_TEST_HEADER) -> {
+                    val testDescription = header.substring(POSITIVE_TEST_HEADER.length)
+                    PositiveTest(file, testDescription.trim())
+                }
 
-                header != null && header.startsWith(NEGATIVE_TEST_HEADER) ->
-                    NegativeTest(header.substring(NEGATIVE_TEST_HEADER.length).trim(), lines.drop(1))
+                header != null && header.startsWith(NEGATIVE_TEST_HEADER) -> {
+                    val testDescription = header.substring(NEGATIVE_TEST_HEADER.length)
+                    val expectedMessages = lines.drop(1)
+                    NegativeTest(file, testDescription.trim(), expectedMessages)
+                }
 
                 else ->
-                    PositiveTest(null)
+                    PositiveTest(file, null)
             }
         }
-
-    sealed class TestSpec(val description: String)
-    class PositiveTest(description: String?) : TestSpec(description ?: "A regular program should pass analysis.")
-    class NegativeTest(description: String, val errors: List<String>) : TestSpec(description)
 }

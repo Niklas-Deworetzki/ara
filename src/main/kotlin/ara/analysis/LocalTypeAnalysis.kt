@@ -175,7 +175,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
                 val memberType = member.value.computedType()
                 Type.Member(member.name.name, memberType)
             }
-            return Type.Structure(typedMembers)
+            return Type.fromMembers(typedMembers)
         }
 
         private fun checkMemberAccess(memberAccess: Syntax.MemberAccess): Type {

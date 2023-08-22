@@ -1,6 +1,7 @@
 package ara.types
 
-import ara.types.Type.Algebra.Companion.evaluate
+import ara.utils.NonEmptyList
+import ara.utils.NonEmptyList.Companion.toNonEmptyList
 
 sealed class Type {
     data class Variable(var type: Type? = null) : Type() {
@@ -24,19 +25,17 @@ sealed class Type {
     }
 
 
-    sealed class BuiltinType : Type()
+    sealed class BuiltinType(val representation: String) : Type()
 
-    object Integer : BuiltinType()
+    object Integer : BuiltinType("Int")
 
-    object Comparison : BuiltinType()
+    object Comparison : BuiltinType("Comparison")
 
+    object Unit : BuiltinType("{ }")
 
-    data class Structure(val members: List<Member>) : Type()
+    data class Structure(val members: NonEmptyList<Member>) : Type()
 
-    data class Member(
-        val name: String,
-        val type: Type
-    )
+    data class Member(val name: String, val type: Type)
 
 
     operator fun contains(other: Variable): Boolean = when (this) {
@@ -47,43 +46,46 @@ sealed class Type {
         }
     }
 
-
-    interface Algebra<T> {
-        fun builtin(builtin: BuiltinType): T
-        fun structure(memberNames: List<String>, memberValues: List<T>): T
-        fun uninitializedVariable(): T
-
-        companion object {
-            fun <T> Algebra<T>.evaluate(type: Type): T = when (type) {
-                is BuiltinType ->
-                    builtin(type)
-
-                is Structure ->
-                    structure(
-                        type.members.map { it.name },
-                        type.members.map { evaluate(it.type) }
-                    )
-
-                is Variable ->
-                    type.fold(this::uninitializedVariable) {
-                        evaluate(it)
-                    }
-            }
-        }
-    }
-
     final override fun toString(): String = Show.evaluate(this)
 
     private object Show : Algebra<String> {
-        override fun builtin(builtin: BuiltinType): String = when (builtin) {
-            Comparison -> "Comparison"
-            Integer -> "Int"
-        }
+        override fun builtin(builtin: BuiltinType): String =
+            builtin.representation
 
-        override fun structure(memberNames: List<String>, memberValues: List<String>): String =
+        override fun structure(memberNames: NonEmptyList<String>, memberValues: NonEmptyList<String>): String =
             memberNames.zip(memberValues)
                 .joinToString(prefix = "{", separator = ",", postfix = "}") { (name, value) -> "$name: $value" }
 
         override fun uninitializedVariable(): String = "⊥"
+    }
+
+
+    companion object {
+        fun fromMembers(members: List<Member>): Type = when {
+            members.isEmpty() -> Unit
+            else -> Structure(members.toNonEmptyList())
+        }
+    }
+
+    interface Algebra<T> {
+        fun builtin(builtin: BuiltinType): T
+        fun structure(memberNames: NonEmptyList<String>, memberValues: NonEmptyList<T>): T
+        fun uninitializedVariable(): T
+
+        fun evaluate(type: Type): T = when (type) {
+            is BuiltinType ->
+                builtin(type)
+
+            is Structure ->
+                structure(
+                    type.members.map { it.name },
+                    type.members.map { evaluate(it.type) }
+                )
+
+            is Variable ->
+                type.fold(this::uninitializedVariable) {
+                    evaluate(it)
+                }
+        }
     }
 }

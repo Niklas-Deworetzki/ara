@@ -5,6 +5,9 @@ import ara.control.Block
 import ara.storage.ResourceAllocation.asResourcePath
 import ara.storage.ResourcePath
 import ara.syntax.Syntax
+import ara.types.Type
+import ara.utils.NonEmptyList
+import ara.utils.NonEmptyList.Companion.toNonEmptyList
 import ara.utils.combineWith
 import java.util.*
 import kotlin.contracts.ExperimentalContracts
@@ -228,35 +231,52 @@ class Interpreter(val program: Syntax.Program) : Runnable {
     }
 
     private fun evaluate(expression: Syntax.ResourceExpression): Value = when (expression) {
+        // Evaluate integer literal to value.
         is Syntax.IntegerLiteral ->
             Value.Integer(expression.value)
 
+        // Component-wise evaluation of members.
         is Syntax.StructureLiteral -> {
-            val evaluatedMembers = expression.members.associate { member ->
-                member.name.name to evaluate(member.value)
+            if (expression.computedType == Type.Unit)
+                Value.Unit
+
+            val evaluatedMembers = expression.members.map { member ->
+                Value.Member(member.name.name, evaluate(member.value))
             }
-            Value.Structure(evaluatedMembers)
+            Value.Structure(evaluatedMembers.toNonEmptyList())
         }
 
+        // Fetch resource from path.
         is Syntax.Storage ->
             currentStackFrame[expression.asResourcePath()]
     }
 
-    private fun initialize(resource: Syntax.ResourceExpression, value: Value): Unit = when (resource) {
-        is Syntax.IntegerLiteral ->
-            ensureReversibility(resource.value == value.asInteger()) {
-                "Expected ${resource.value} but got ${value.asInteger()}."
+    private fun initialize(resource: Syntax.ResourceExpression, value: Value) {
+        when (resource) {
+            // Assigning to integer literal verifies assigned value.
+            is Syntax.IntegerLiteral ->
+                ensureReversibility(resource.value == value.asInteger()) {
+                    "Expected ${resource.value} but got ${value.asInteger()}."
+                }
+
+            // Component-wise initialization of members.
+            is Syntax.StructureLiteral -> {
+                if (resource.computedType == Type.Unit)
+                    return // Nothing to do.
+
+                val structure = value.asStructure()
+                combineWith(resource.members, structure.data) { member, data ->
+                    internalAssertion(member.name.name == data.name) {
+                        "Member names in structure must be equal."
+                    }
+                    initialize(member.value, data.value)
+                }
             }
 
-        is Syntax.StructureLiteral -> {
-            val structure = value.asStructure()
-            for (member in resource.members) {
-                initialize(member.value, structure[member.name.name]!!)
-            }
+            // Initialize resource described by path.
+            is Syntax.Storage ->
+                currentStackFrame[resource.asResourcePath()] = value
         }
-
-        is Syntax.Storage ->
-            currentStackFrame[resource.asResourcePath()] = value
     }
 
     private fun finalize(resource: Syntax.ResourceExpression): Value =
@@ -284,14 +304,14 @@ class Interpreter(val program: Syntax.Program) : Runnable {
 
         private fun Value.asInteger(): Int {
             internalAssertion(this is Value.Integer) {
-                "Operation requires an integer, but a structure is present."
+                "Operation requires an integer."
             }
             return this.value
         }
 
-        private fun Value.asStructure(): Map<String, Value> {
+        private fun Value.asStructure(): NonEmptyList<Value.Member> {
             internalAssertion(this is Value.Structure) {
-                "Operation requires an integer, but a structure is present."
+                "Operation requires a structure."
             }
             return this.members
         }

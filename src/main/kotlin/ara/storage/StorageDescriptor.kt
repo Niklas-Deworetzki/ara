@@ -3,9 +3,8 @@ package ara.storage
 import ara.reporting.Message.Companion.quoted
 import ara.types.Environment
 import ara.types.Type
-import ara.utils.get
 import ara.utils.NonEmptyList
-import ara.utils.NonEmptyList.Companion.toNonEmptyList
+import ara.utils.get
 import ara.utils.zip
 import java.util.*
 
@@ -38,7 +37,7 @@ protected constructor(val root: InnerNode<V>) {
     data class Entry<V>(override val key: String, override val value: DescriptorNode<V>) :
         Map.Entry<String, DescriptorNode<V>>
 
-    class InnerNode<V>(val data: NonEmptyList<Entry<V>>) :
+    class InnerNode<V>(val data: List<Entry<V>>) :
         DescriptorNode<V>, Iterable<DescriptorNode<V>> {
 
         override fun iterator(): Iterator<DescriptorNode<V>> =
@@ -142,7 +141,7 @@ protected constructor(val root: InnerNode<V>) {
             val descriptors = orderedVariables.map { (variable, type) ->
                 Entry(variable.name, algebra.evaluate(type))
             }
-            return InnerNode(descriptors.toNonEmptyList())
+            return InnerNode(descriptors.toList())
         }
 
         /**
@@ -161,7 +160,7 @@ protected constructor(val root: InnerNode<V>) {
                 memberNames: NonEmptyList<String>,
                 memberValues: NonEmptyList<DescriptorNode<V>>
             ): DescriptorNode<V> =
-                InnerNode(zip(memberNames, memberValues, ::Entry).toNonEmptyList())
+                InnerNode(zip(memberNames, memberValues, ::Entry))
         }
     }
 }

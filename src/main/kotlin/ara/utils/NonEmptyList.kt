@@ -7,6 +7,9 @@ package ara.utils
  */
 class NonEmptyList<out E>
 private constructor(val data: List<E>) : AbstractList<E>() {
+    init {
+        require(data.isNotEmpty()) { "NonEmptyList cannot be empty!" }
+    }
 
     override val size: Int
         get() = data.size
@@ -43,19 +46,11 @@ private constructor(val data: List<E>) : AbstractList<E>() {
         data.subList(fromIndex, toIndex)
 
     inline fun <R> map(transform: (E) -> R): NonEmptyList<R> =
-        fromNonEmptyList(data.map(transform))
+        data.map(transform).toNonEmptyList()
 
 
     companion object {
         fun <E> List<E>.toNonEmptyList(): NonEmptyList<E> =
-            fromNonEmptyList(this)
-
-        fun <E> Sequence<E>.toNonEmptyList(): NonEmptyList<E> =
-            fromNonEmptyList(this.toList())
-
-        fun <E> fromNonEmptyList(list: List<E>): NonEmptyList<E> {
-            assert(list.isNotEmpty()) { "NonEmptyList cannot be empty!" }
-            return NonEmptyList(list)
-        }
+            NonEmptyList(this)
     }
 }

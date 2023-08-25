@@ -1,0 +1,6 @@
+
+routine main() -> () {
+    () := uncall empty()
+}
+
+routine empty() -> () { }

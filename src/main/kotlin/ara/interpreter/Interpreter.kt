@@ -230,25 +230,27 @@ class Interpreter(val program: Syntax.Program) : Runnable {
         }
     }
 
-    private fun evaluate(expression: Syntax.ResourceExpression): Value = when (expression) {
-        // Evaluate integer literal to value.
-        is Syntax.IntegerLiteral ->
-            Value.Integer(expression.value)
+    private fun evaluate(expression: Syntax.ResourceExpression): Value {
+        when (expression) {
+            // Evaluate integer literal to value.
+            is Syntax.IntegerLiteral ->
+                return Value.Integer(expression.value)
 
-        // Component-wise evaluation of members.
-        is Syntax.StructureLiteral -> {
-            if (expression.computedType == Type.Unit)
-                Value.Unit
+            // Component-wise evaluation of members.
+            is Syntax.StructureLiteral -> {
+                if (expression.computedType == Type.Unit)
+                    return Value.Unit
 
-            val evaluatedMembers = expression.members.map { member ->
-                Value.Member(member.name.name, evaluate(member.value))
+                val evaluatedMembers = expression.members.map { member ->
+                    Value.Member(member.name.name, evaluate(member.value))
+                }
+                return Value.Structure(evaluatedMembers.toNonEmptyList())
             }
-            Value.Structure(evaluatedMembers.toNonEmptyList())
-        }
 
-        // Fetch resource from path.
-        is Syntax.Storage ->
-            currentStackFrame[expression.asResourcePath()]
+            // Fetch resource from path.
+            is Syntax.Storage ->
+                return currentStackFrame[expression.asResourcePath()]
+        }
     }
 
     private fun initialize(resource: Syntax.ResourceExpression, value: Value) {

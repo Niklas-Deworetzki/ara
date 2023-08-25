@@ -4,6 +4,7 @@ import ara.Direction
 import ara.reporting.Message.Companion.quoted
 import ara.storage.StorageDescriptor
 import ara.syntax.Syntax
+import ara.utils.NonEmptyList.Companion.toNonEmptyList
 import ara.utils.combineWith
 import java.util.*
 
@@ -37,7 +38,7 @@ class StackFrame(val direction: Direction, val routine: Syntax.RoutineDefinition
             val members = node.data.map { (name, value) ->
                 Value.Member(name, getNodeValue(value))
             }
-            Value.Structure(members)
+            Value.Structure(members.toNonEmptyList())
         }
 
         is LeafNode ->

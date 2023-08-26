@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Proper support for unit types and unit values.
+
 ## [indev-2] - 2023-08-20
 
 ### Added

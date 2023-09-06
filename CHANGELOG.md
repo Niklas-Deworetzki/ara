@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - Proper support for unit types and unit values.
+- Proper README with explanation of constructs and philosophy.
 
 ## [indev-2] - 2023-08-20
 

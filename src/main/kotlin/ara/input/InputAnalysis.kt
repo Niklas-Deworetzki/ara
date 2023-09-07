@@ -22,8 +22,6 @@ class InputAnalysis(val source: InputSource) : Analysis<Syntax.Program>() {
             setOf(Sym.ROUTINE) to "a routine definition",
             setOf(Sym.IDENTIFIER) to "an identifier",
             setOf(Sym.INTEGER) to "an integer",
-            setOf(Sym.CURL_L) to "start of routine or structure body",
-            setOf(Sym.CURL_R) to "end of routine or structure body",
             setOf(Sym.COLON) to "a type annotation",
             setOf(Sym.COMMA) to "another element separated by a comma",
             setOf(Sym.DOT) to "a member access",
@@ -49,6 +47,8 @@ class InputAnalysis(val source: InputSource) : Analysis<Syntax.Program>() {
             setOf(Sym.UNCALL) to "uncall",
             setOf(Sym.EQ) to "=",
             setOf(Sym.ASSIGNMENT) to ":=",
+            setOf(Sym.CURL_L) to "{",
+            setOf(Sym.CURL_R) to "}",
             setOf(Sym.PAREN_L) to "(",
             setOf(Sym.PAREN_R) to ")",
             setOf(Sym.ARROW_L) to "<-",
@@ -62,7 +62,7 @@ class InputAnalysis(val source: InputSource) : Analysis<Syntax.Program>() {
                     expectedStructures.add(structure)
                 }
             }
-            return expectedStructures.formatToHumanReadable(normalSeparator = ",", lastSeparator = " or ")
+            return expectedStructures.formatToHumanReadable(normalSeparator = ", ", lastSeparator = " or ")
         }
     }
 

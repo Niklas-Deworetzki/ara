@@ -27,7 +27,7 @@ class Interpreter(val program: Syntax.Program) : Runnable {
         get() = currentStackFrame.routine
 
     override fun run() {
-        val entryPoint = findEntryPoint()
+        val entryPoint = findEntryPoint() ?: return
 
         try {
             val inputValues = entryPoint.signature.inputTypes.map { Value.defaultValueForType(it) }
@@ -40,15 +40,10 @@ class Interpreter(val program: Syntax.Program) : Runnable {
         }
     }
 
-    private fun findEntryPoint(): Syntax.RoutineDefinition {
-        val entryPoint = program.definitions
+    private fun findEntryPoint(): Syntax.RoutineDefinition? =
+        program.definitions
             .filterIsInstance<Syntax.RoutineDefinition>()
             .find { it.name == MAIN_ROUTINE_NAME }
-        internalAssertion(entryPoint != null) {
-            "Program's entry point $MAIN_ROUTINE_NAME is not present."
-        }
-        return entryPoint
-    }
 
     private lateinit var currentInstruction: Syntax.Instruction
     private lateinit var lastJumpTarget: Syntax.Identifier
@@ -101,14 +96,9 @@ class Interpreter(val program: Syntax.Program) : Runnable {
             val finalized = currentDirection.choose(instruction.src, instruction.dst)
             val initialized = currentDirection.choose(instruction.dst, instruction.src)
 
-            if (instruction.arithmetic == null) {
-                val value = finalize(finalized)
-                initialize(initialized, value)
-            } else {
-                val value = finalize(finalized).asInteger()
-                val modifiedValue = applyModification(value, instruction.arithmetic)
-                initialize(initialized, modifiedValue)
-            }
+            val value = finalize(finalized).asInteger()
+            val modifiedValue = applyModification(value, instruction.arithmetic)
+            initialize(initialized, modifiedValue)
         }
 
         is Syntax.MultiAssignment -> {

@@ -171,7 +171,7 @@ Instruction ::= ArithmeticAssignment:result
               ;
 
 ArithmeticAssignment ::= ResourceExpression:dst ASSIGNMENT ResourceExpression:src
-                          {: RESULT = withRange(new ArithmeticAssignment(dst, src, null), dstleft, srcright); :}
+                          {: RESULT = withRange(new MultiAssignment(cons(dst, nil()), cons(src, nil())), dstleft, srcright); :}
                        | ResourceExpression:dst ASSIGNMENT ResourceExpression:src ArithmeticModifier:mod
                           {: RESULT = withRange(new ArithmeticAssignment(dst, src, mod), dstleft, modright); :}
                        ;

@@ -70,7 +70,7 @@ sealed class Syntax {
     data class ArithmeticAssignment(
         val dst: ResourceExpression,
         val src: ResourceExpression,
-        val arithmetic: ArithmeticModifier?
+        val arithmetic: ArithmeticModifier
     ) : Instruction()
 
     /**

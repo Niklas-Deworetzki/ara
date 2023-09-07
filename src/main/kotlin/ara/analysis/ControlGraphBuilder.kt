@@ -6,6 +6,7 @@ import ara.control.Block.Companion.isEndOfBlock
 import ara.control.ControlGraph
 import ara.control.ControlGraphVisualizer.Companion.asGraphString
 import ara.syntax.Syntax
+import ara.syntax.extensions.routines
 import ara.utils.sublist
 
 private typealias InstructionBuffer = MutableList<Syntax.Instruction>
@@ -20,7 +21,7 @@ private typealias InstructionBuffer = MutableList<Syntax.Instruction>
 class ControlGraphBuilder(private val program: Syntax.Program) : Analysis<Unit>() {
 
     override fun runAnalysis() {
-        for (routine in program.definitions.filterIsInstance<Syntax.RoutineDefinition>()) {
+        for (routine in program.routines) {
             val blocks = BlockExtractor(routine).extract()
             val graph = GraphConstructor(routine, blocks).construct()
 

@@ -2,6 +2,7 @@ package ara.analysis
 
 import ara.analysis.type.TypeComputation
 import ara.syntax.Syntax
+import ara.syntax.extensions.types
 import ara.types.TypeUnification
 import ara.types.TypeUnification.unify
 
@@ -11,7 +12,7 @@ import ara.types.TypeUnification.unify
 class TypeDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
 
     override fun runAnalysis() {
-        val typeDefinitions = program.definitions.filterIsInstance<Syntax.TypeDefinition>()
+        val typeDefinitions = program.types
 
         typeDefinitions.forEach(::declareType)
         proceedAnalysis {

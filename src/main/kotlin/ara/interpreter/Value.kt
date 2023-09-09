@@ -1,23 +1,33 @@
 package ara.interpreter
 
 import ara.types.Type
-import ara.types.Type.Algebra.Companion.evaluate
-import ara.utils.zipToMap
+import ara.utils.NonEmptyList
+import ara.utils.NonEmptyList.Companion.toNonEmptyList
+import ara.utils.zip
+import java.lang.IllegalArgumentException
 
 sealed interface Value {
+
+    object Unit : Value {
+        override fun toString(): String =
+            "{ }"
+    }
 
     data class Integer(val value: Int) : Value {
         override fun toString(): String =
             value.toString()
     }
 
-    data class Structure(val members: Map<String, Value>) : Value {
-        override fun toString(): String = when {
-            members.isEmpty() -> "{ }"
-            else -> members.asIterable().joinToString(separator = ", ", prefix = "{ ", postfix = " }") {
-                "${it.key} = ${it.value}"
+    data class Structure(val members: NonEmptyList<Member>) : Value {
+        override fun toString(): String =
+            members.joinToString(separator = ", ", prefix = "{", postfix = "}") {
+                "${it.name} = ${it.value}"
             }
-        }
+    }
+
+    data class Member(override val key: String, override val value: Value) : Map.Entry<String, Value> {
+        val name: String
+            get() = key
     }
 
     companion object {
@@ -27,14 +37,19 @@ sealed interface Value {
             DefaultValueAlgebra.evaluate(type)
 
         private object DefaultValueAlgebra : Type.Algebra<Value> {
-            override fun builtin(builtin: Type.BuiltinType): Value =
-                ZERO
+            override fun builtin(builtin: Type.BuiltinType): Value = when (builtin) {
+                Type.Comparison -> throw NotImplementedError("Cannot store comparison results for now.")
+                Type.Integer -> ZERO
+                Type.Unit -> Unit
+            }
 
-            override fun structure(memberNames: List<String>, memberValues: List<Value>): Value =
-                Structure(zipToMap(memberNames, memberValues))
+            override fun structure(memberNames: NonEmptyList<String>, memberValues: NonEmptyList<Value>): Value {
+                val members = zip(memberNames, memberValues, ::Member)
+                return Structure(members.toNonEmptyList())
+            }
 
             override fun uninitializedVariable(): Value =
-                ZERO
+                throw IllegalArgumentException("Cannot provide value for uninitialized type variable.")
         }
     }
 }

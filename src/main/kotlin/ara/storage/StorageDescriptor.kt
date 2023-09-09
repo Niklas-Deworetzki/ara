@@ -3,10 +3,10 @@ package ara.storage
 import ara.reporting.Message.Companion.quoted
 import ara.types.Environment
 import ara.types.Type
-import ara.types.Type.Algebra.Companion.evaluate
-import ara.utils.zipToMap
-import java.util.Deque
-import java.util.LinkedList
+import ara.utils.NonEmptyList
+import ara.utils.get
+import ara.utils.zip
+import java.util.*
 
 /**
  * A tree-like lookup-map that provides read and write access to nodes by providing a path.
@@ -34,16 +34,19 @@ protected constructor(val root: InnerNode<V>) {
             data.hashCode()
     }
 
-    class InnerNode<V>(val data: MutableMap<String, DescriptorNode<V>>) :
+    data class Entry<V>(override val key: String, override val value: DescriptorNode<V>) :
+        Map.Entry<String, DescriptorNode<V>>
+
+    class InnerNode<V>(val data: List<Entry<V>>) :
         DescriptorNode<V>, Iterable<DescriptorNode<V>> {
 
         override fun iterator(): Iterator<DescriptorNode<V>> =
-            this.data.values.iterator()
+            this.data.map { it.value }.iterator()
 
         override fun copy(): InnerNode<V> {
-            val copiedData = mutableMapOf<String, DescriptorNode<V>>()
-            for ((key, value) in this.data)
-                copiedData[key] = value.copy()
+            val copiedData = this.data.map { (key, value) ->
+                Entry(key, value.copy())
+            }
             return InnerNode(copiedData)
         }
 
@@ -52,17 +55,24 @@ protected constructor(val root: InnerNode<V>) {
 
         override fun hashCode(): Int =
             data.hashCode()
+
+        operator fun get(key: String): DescriptorNode<V>? =
+            data[key]
     }
+
 
     val keys: Set<ResourcePath> =
         collectKeys(root).map(ResourcePath::of).toSet()
 
+    /**
+     * Translate [ResourcePath] to [DescriptorNode] in this [StorageDescriptor].
+     */
     private fun findNode(path: ResourcePath): DescriptorNode<V> {
         var currentNode: DescriptorNode<V> = root
         for (index in path.indices) {
             when (currentNode) {
                 is InnerNode ->
-                    currentNode = currentNode.data[path[index]]
+                    currentNode = currentNode[path[index]]
                         ?: throw NoSuchElementException("No key ${path.subPath(index).quoted()} in descriptor tree.")
 
                 is LeafNode ->
@@ -81,12 +91,6 @@ protected constructor(val root: InnerNode<V>) {
     protected abstract fun setNodeValue(node: DescriptorNode<V>, value: V)
     protected abstract fun getNodeValue(node: DescriptorNode<V>): V
 
-    internal open fun formatValue(value: V): String =
-        "$value"
-
-
-    override fun toString(): String =
-        StorageDescriptorFormatter(this).format()
 
     override fun equals(other: Any?): Boolean {
         return other is StorageDescriptor<*> && this.root == other.root
@@ -96,22 +100,33 @@ protected constructor(val root: InnerNode<V>) {
         return root.hashCode()
     }
 
+
+    /**
+     * Controls how values in this [StorageDescriptor] are represented
+     * when creating a [String] representation.
+     */
+    internal open fun formatValue(value: V): String =
+        "$value"
+
+    override fun toString(): String =
+        StorageDescriptorFormatter(this).format()
+
     protected companion object {
         private fun <V> collectKeys(node: InnerNode<V>): List<Deque<String>> {
             val result = mutableListOf<Deque<String>>()
-            for ((path, subNode) in node.data) {
+            for ((key, subNode) in node.data) {
                 when (subNode) {
                     is LeafNode -> {
-                        val stack = LinkedList<String>()
-                        stack.push(path)
-                        result.add(stack)
+                        val path = LinkedList<String>()
+                        path.push(key)
+                        result.add(path)
                     }
 
                     is InnerNode -> {
                         val children = collectKeys(subNode)
-                        for (stack in children) {
-                            stack.push(path)
-                            result.add(stack)
+                        for (path in children) {
+                            path.push(key)
+                            result.add(path)
                         }
                     }
                 }
@@ -122,25 +137,30 @@ protected constructor(val root: InnerNode<V>) {
         fun <V> fromEnvironment(environment: Environment, defaultValue: V): InnerNode<V> {
             val algebra = DescriptorConstructionAlgebra(defaultValue)
 
-            val descriptors = mutableMapOf<String, DescriptorNode<V>>()
-            for ((name, type) in environment.variables) {
-                descriptors[name.name] = algebra.evaluate(type)
+            val orderedVariables = environment.variables.sortedBy { it.key }
+            val descriptors = orderedVariables.map { (variable, type) ->
+                Entry(variable.name, algebra.evaluate(type))
             }
-            return InnerNode(descriptors)
+            return InnerNode(descriptors.toList())
         }
 
-        private class DescriptorConstructionAlgebra<V>(val defaultValue: V) : Type.Algebra<DescriptorNode<V>> {
+        /**
+         * Algebra used to initialize [StorageDescriptor] with default value in all nodes.
+         */
+        private class DescriptorConstructionAlgebra<V>(val defaultValue: V) :
+            Type.Algebra<DescriptorNode<V>> {
+
             override fun builtin(builtin: Type.BuiltinType): DescriptorNode<V> =
                 LeafNode(defaultValue)
 
-            override fun structure(
-                memberNames: List<String>,
-                memberValues: List<DescriptorNode<V>>
-            ): DescriptorNode<V> =
-                InnerNode(zipToMap(memberNames, memberValues))
-
             override fun uninitializedVariable(): DescriptorNode<V> =
                 LeafNode(defaultValue)
+
+            override fun structure(
+                memberNames: NonEmptyList<String>,
+                memberValues: NonEmptyList<DescriptorNode<V>>
+            ): DescriptorNode<V> =
+                InnerNode(zip(memberNames, memberValues, ::Entry))
         }
     }
 }

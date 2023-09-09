@@ -1,0 +1,10 @@
+
+type Unit = { }
+
+routine main() -> () {
+    () := uncall doSomething({ })
+}
+
+routine doSomething() -> (result: Unit) {
+    result := { }
+}

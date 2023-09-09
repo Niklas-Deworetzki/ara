@@ -87,27 +87,16 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
             val srcType = assignment.src.computedType()
             val dstType = assignment.dst.computedType()
 
-            if (assignment.arithmetic == null) {
-                typesMustBeTheSame(
-                    srcType, "Source",
-                    dstType, "Destination",
-                    assignment
-                ) {
-                    "Assignment source and destination must have compatible types."
-                }
+            srcType.mustBe(Type.Integer, assignment.src) {
+                "Assignment source must be of type ${Type.Integer} as required by arithmetic assignment."
+            }
+            dstType.mustBe(Type.Integer, assignment.dst) {
+                "Assignment destination must be of type ${Type.Integer} as required by arithmetic assignment."
+            }
 
-            } else {
-                srcType.mustBe(Type.Integer, assignment.src) {
-                    "Assignment source must be of type ${Type.Integer} as required by arithmetic modifier."
-                }
-                dstType.mustBe(Type.Integer, assignment.dst) {
-                    "Assignment destination must be of type ${Type.Integer} as required by arithmetic modifier."
-                }
-
-                val arithmeticType = assignment.arithmetic.value.computedType()
-                arithmeticType.mustBe(Type.Integer, assignment.arithmetic) {
-                    "Arithmetic expression must be of type ${Type.Integer} as required by arithmetic assignment."
-                }
+            val arithmeticType = assignment.arithmetic.value.computedType()
+            arithmeticType.mustBe(Type.Integer, assignment.arithmetic) {
+                "Arithmetic expression must be of type ${Type.Integer} as required by arithmetic assignment."
             }
         }
 
@@ -117,20 +106,25 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
                     .withPositionOf(assignment)
             }
 
+            val shouldProvideDestinationHint: Boolean = assignment.srcList.size > 2
             combineWith(assignment.srcList, assignment.dstList) { src, dst ->
                 val srcType = src.computedType()
                 val dstType = dst.computedType()
 
-                typesMustBeTheSame(
+                val message = typesMustBeTheSame(
                     srcType, "Source",
                     dstType, "Destination",
                     src
                 ) {
                     "Assignment source and destination must have compatible types."
-                }?.withAdditionalInfo(
-                    "Assignment destination is found here:",
-                    position = dst.range
-                )
+                }
+
+                if (shouldProvideDestinationHint) {
+                    message?.withAdditionalInfo(
+                        "Assignment destination is found here:",
+                        position = dst.range
+                    )
+                }
             }
         }
 
@@ -175,7 +169,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
                 val memberType = member.value.computedType()
                 Type.Member(member.name.name, memberType)
             }
-            return Type.Structure(typedMembers)
+            return Type.fromMembers(typedMembers)
         }
 
         private fun checkMemberAccess(memberAccess: Syntax.MemberAccess): Type {

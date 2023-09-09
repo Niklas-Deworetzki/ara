@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.1.0] - 2023-09-09
+
+### Added
+
+- Proper support for unit types and unit values.
+- Proper README with explanation of constructs and philosophy.
+
+### Fixed
+
+- Missing spaces in parser error messages.
+
+### Changed
+
+- Internal representation of assignments without arithmetic modifier.
+- Descriptions of tokens in parser error messages.
+
 ## [indev-2] - 2023-08-20
 
 ### Added

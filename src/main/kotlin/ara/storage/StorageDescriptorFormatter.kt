@@ -11,7 +11,8 @@ internal class StorageDescriptorFormatter<V>(private val descriptor: StorageDesc
     override fun extractValue(node: StorageDescriptor.DescriptorNode<V>): V =
         (node as StorageDescriptor.LeafNode<V>).data
 
-    override fun extractChildren(node: StorageDescriptor.DescriptorNode<V>): Map<String, StorageDescriptor.DescriptorNode<V>> =
+    override fun extractChildren(node: StorageDescriptor.DescriptorNode<V>):
+            List<Map.Entry<String, StorageDescriptor.DescriptorNode<V>>> =
         (node as StorageDescriptor.InnerNode<V>).data
 
     override fun formatValue(value: V): String =

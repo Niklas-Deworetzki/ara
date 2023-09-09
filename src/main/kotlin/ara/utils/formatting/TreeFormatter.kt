@@ -1,6 +1,7 @@
 package ara.utils.formatting
 
 import ara.utils.combineWith
+import ara.utils.get
 
 abstract class TreeFormatter<N, V> {
 
@@ -18,7 +19,7 @@ abstract class TreeFormatter<N, V> {
 
     protected abstract fun extractValue(node: N): V
 
-    protected abstract fun extractChildren(node: N): Map<String, N>
+    protected abstract fun extractChildren(node: N): List<Map.Entry<String, N>>
 
 
     private fun formatNode(key: String, node: N): List<String> =
@@ -35,7 +36,7 @@ abstract class TreeFormatter<N, V> {
     private fun formatInnerNodeIntoBuffer(
         buffer: MutableList<String>,
         key: String,
-        children: Map<String, N>,
+        children: List<Map.Entry<String, N>>,
         firstIndentation: String,
         consecutiveIndentations: String
     ) {
@@ -46,10 +47,10 @@ abstract class TreeFormatter<N, V> {
         }
     }
 
-    private fun formatChildren(children: Map<String, N>): List<String> {
+    private fun formatChildren(children: List<Map.Entry<String, N>>): List<String> {
         if (children.isEmpty()) return emptyList()
         return mutableListOf<String>().apply {
-            val sortedKeys = children.keys.sorted()
+            val sortedKeys = children.map { it.key }.sorted()
             val firstKeys = sortedKeys.dropLast(1)
             for (key in firstKeys) {
                 formatInnerNodeIntoBuffer(this, key, children, "├", "│")
@@ -65,13 +66,12 @@ abstract class TreeFormatter<N, V> {
             override fun hasNext(): Boolean = true
 
             private var isFirst = true
-            override fun next(): String = when {
-                isFirst -> {
+            override fun next(): String {
+                if (isFirst) {
                     isFirst = false
-                    first
+                    return first
                 }
-
-                else -> consecutive
+                return consecutive
             }
         }
     }

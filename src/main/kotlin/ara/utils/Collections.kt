@@ -11,17 +11,19 @@ fun <X, Y> combineWith(xs: Iterable<X>, ys: Iterable<Y>, action: (X, Y) -> Unit)
     }
 }
 
-fun <K, V> zipToMap(keys: Iterable<K>, values: Iterable<V>): MutableMap<K, V> {
-    val keyIterator = keys.iterator()
-    val valueIterator = values.iterator()
-    val resultMap = mutableMapOf<K, V>()
+fun <X, Y, Z> zip(xs: Iterable<X>, ys: Iterable<Y>, combinator: (X, Y) -> Z): List<Z> {
+    val xIterator = xs.iterator()
+    val yIterator = ys.iterator()
+    val result = mutableListOf<Z>()
 
-    while (keyIterator.hasNext() && valueIterator.hasNext()) {
-        resultMap[keyIterator.next()] = valueIterator.next()
+    while (xIterator.hasNext() && yIterator.hasNext()) {
+        result.add(combinator(xIterator.next(), yIterator.next()))
     }
-
-    return resultMap
+    return result
 }
+
+operator fun <K, V> List<Map.Entry<K, V>>.get(key: K): V? =
+    this.find { it.key == key }?.value
 
 fun <T> sublist(list: List<T>, skipFront: Int, skipEnd: Int): List<T> {
     if (list.size < skipFront + skipEnd)

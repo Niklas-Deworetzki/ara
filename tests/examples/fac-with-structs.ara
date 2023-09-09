@@ -1,0 +1,30 @@
+
+type Integer = { value: Int }
+
+routine main() -> (result: Int) {
+    ({value = result}) := call fac({value = 3})
+}
+
+routine fac(n: Integer) -> (result: Integer) {
+    result.value := 1
+    -> Entry
+
+    Entry, Loop <- (result.value == 1)
+        ({product = result.value, multiplier = n.value}) := call multiply ({multiplicant = result.value, multiplier = n.value})
+
+        n.value := n.value - (1 + 0)
+    (n.value == 0) -> Exit, Loop
+
+    Exit <-
+    0 := n.value
+}
+
+type Multiplication = { multiplicant: Int, multiplier: Int }
+type Product = { product: Int, multiplier: Int }
+
+routine multiply(multiplication: Multiplication) -> (product: Product) {
+    product.product := 0 ^ (multiplication.multiplicant * multiplication.multiplier)
+    product.multiplier := multiplication.multiplier
+    0 := multiplication.multiplicant ^ (product.product / product.multiplier)
+}
+

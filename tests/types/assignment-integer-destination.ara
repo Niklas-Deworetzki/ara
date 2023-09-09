@@ -1,5 +1,5 @@
 # Error: Assignment destination must be integer when arithmetic modifier is present.
-# Assignment destination must be of type Int as required by arithmetic modifier.
+# Assignment destination must be of type Int as required by arithmetic assignment.
 
 type A = {  }
 

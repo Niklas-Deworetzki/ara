@@ -188,11 +188,9 @@ class LivenessAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
         private fun verifyUses(instruction: Syntax.Instruction) {
             when (instruction) {
                 is Syntax.ArithmeticAssignment -> {
-                    if (instruction.arithmetic != null) {
-                        val resources = instruction.arithmetic.value.asResourcePaths().toSet()
-                        for (resource in resources) {
-                            verifyUse(resource, instruction.arithmetic)
-                        }
+                    val resources = instruction.arithmetic.value.asResourcePaths().toSet()
+                    for (resource in resources) {
+                        verifyUse(resource, instruction.arithmetic)
                     }
                 }
 

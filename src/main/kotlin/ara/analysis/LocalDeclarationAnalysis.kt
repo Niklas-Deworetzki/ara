@@ -36,8 +36,8 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
         is Syntax.TypedStorage ->
             declare(expression.storage)
 
-        is Syntax.MemberAccess -> // TODO: Perhaps we should not allow the declaration of variables as part of a member access...
-            declare(expression.storage)
+        is Syntax.MemberAccess ->
+            Unit
 
         is Syntax.IntegerLiteral ->
             Unit

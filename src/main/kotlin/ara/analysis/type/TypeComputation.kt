@@ -21,7 +21,7 @@ class TypeComputation(
             val members = this.members.map {
                 Type.Member(it.name.name, it.type.asType())
             }
-            Type.Structure(members)
+            Type.fromMembers(members)
         }
     }
 

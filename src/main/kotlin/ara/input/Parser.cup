@@ -47,6 +47,7 @@ terminal    ROUTINE, TYPE;
 terminal    CALL, UNCALL;
 terminal    COLON, COMMA, DOT, EQ;
 terminal    ASSIGNMENT;
+terminal    MEMORY;
 
 terminal    OPERATOR_ADD, OPERATOR_SUB, OPERATOR_XOR, OPERATOR_MUL, OPERATOR_DIV, OPERATOR_MOD;
 terminal    OPERATOR_EQU, OPERATOR_NEQ, OPERATOR_LST, OPERATOR_LSE, OPERATOR_GRT, OPERATOR_GRE;
@@ -64,16 +65,16 @@ non terminal Parameter                  Parameter;
 non terminal List<Instruction>          InstructionList;
 non terminal Instruction                Instruction, ArithmeticAssignment, MultiAssignment, Unconditional, Conditional, Call;
 non terminal List<ResourceExpression>   ArgumentList, ArgumentListTail;
-non terminal ResourceExpression         ResourceExpression, IntegerLiteral, StructureLiteral;
+non terminal ResourceExpression         ResourceExpression, IntegerLiteral, StructureLiteral, AllocationExpression;
 non terminal List<StructureLiteral.Member> StructureLiteralMembersList, StructureLiteralMemberListTail;
 non terminal StructureLiteral.Member    StructureLiteralMember;
 non terminal Storage                    Storage, BaseStorage, NamedStorage;
-non terminal List<Function<Storage, Storage>> StorageExtensions;
-non terminal Function<Storage, Storage> TypedStorageExtension, MemberAccessExtension;
+non terminal List<Function<Storage, Storage>> StorageSuffixes;
+non terminal Function<Storage, Storage> TypedStorageSuffix, MemberAccessSuffix, DereferenceSuffix;
 non terminal ArithmeticModifier         ArithmeticModifier;
 non terminal ArithmeticExpression       ArithmeticExpression, ArithmeticBinary, ArithmeticValue;
 non terminal ConditionalExpression      ConditionalExpression, ComparativeBinary;
-non terminal Type                       Type, NamedType, StructureType;
+non terminal Type                       Type, NamedType, StructureType, ReferenceType;
 non terminal List<StructureType.Member> StructureTypeMemberList, StructureTypeMemberListTail;
 non terminal StructureType.Member       StructureTypeMember;
 non terminal ModificationOperator       ModificationOperator;
@@ -99,13 +100,13 @@ Identifier ::= IDENTIFIER:name
 //
 //
 
-Program ::= IgnoredCommentLines GlobalDefinitionList:result
+Program ::= GlobalDefinitionList:result
              {: RESULT = new Program(result); :}
           ;
 
-GlobalDefinitionList ::= Definition:head GlobalDefinitionList:tail
+GlobalDefinitionList ::= IgnoredCommentLines Definition:head GlobalDefinitionList:tail
                           {: RESULT = cons(head, tail); :}
-                       | Epsilon
+                       | IgnoredCommentLines
                           {: RESULT = nil(); :}
                        ;
 
@@ -218,6 +219,8 @@ ResourceExpression ::= IntegerLiteral:result
                         {: RESULT = result; :}
                      | StructureLiteral:result
                         {: RESULT = result; :}
+                     | AllocationExpression:result
+                        {: RESULT = result; :}
                      | Storage:result
                         {: RESULT = result; :}
                      ;
@@ -246,7 +249,11 @@ IntegerLiteral ::= INTEGER:value
                     {: RESULT = withRange(new IntegerLiteral(value), valueleft, valueright); :}
                  ;
 
-Storage ::= BaseStorage:base StorageExtensions:extensions
+AllocationExpression ::= MEMORY:anchor ResourceExpression:expression
+                          {: RESULT = withRange(new AllocationExpression(expression), anchorleft, anchorright); :}
+                       ;
+
+Storage ::= BaseStorage:base StorageSuffixes:extensions
              {: RESULT = base;
                 for (var constructor : extensions) {
                     RESULT = constructor.apply(RESULT);
@@ -262,21 +269,25 @@ NamedStorage ::= Identifier:name
                   {: RESULT = withRange(new NamedStorage(name), nameleft, nameright); :}
                ;
 
-StorageExtensions ::= TypedStorageExtension:head StorageExtensions:tail
-                       {: RESULT = cons(head, tail); :}
-                    | MemberAccessExtension:head StorageExtensions:tail
-                       {: RESULT = cons(head, tail); :}
-                    | Epsilon
-                       {: RESULT = nil(); :}
+StorageSuffixes ::= TypedStorageSuffix:head StorageSuffixes:tail
+                     {: RESULT = cons(head, tail); :}
+                  | MemberAccessSuffix:head StorageSuffixes:tail
+                     {: RESULT = cons(head, tail); :}
+                  | Epsilon
+                     {: RESULT = nil(); :}
+                  ;
+
+TypedStorageSuffix ::= COLON:l Type:type
+                        {: RESULT = (base) -> withRange(new TypedStorage(base, type), lleft, typeright); :}
+                     ;
+
+MemberAccessSuffix ::= DOT:l Identifier:member
+                        {: RESULT = (base) -> withRange(new MemberAccess(base, member), lleft, memberright); :}
+                     ;
+
+DereferenceSuffix ::= MEMORY:anchor
+                       {: RESULT = (base) -> withRange(new DereferencedStorage(base), anchorleft, anchorright); :}
                     ;
-
-TypedStorageExtension ::= COLON:l Type:type
-                           {: RESULT = (base) -> withRange(new TypedStorage(base, type), lleft, typeright); :}
-                        ;
-
-MemberAccessExtension ::= DOT:l Identifier:member
-                           {: RESULT = (base) -> withRange(new MemberAccess(base, member), lleft, memberright); :}
-                        ;
 
 //
 //
@@ -322,11 +333,17 @@ Type ::= NamedType:type
           {: RESULT = type; :}
        | StructureType:type
           {: RESULT = type; :}
+       | ReferenceType:type
+          {: RESULT = type; :}
        ;
 
 NamedType ::= Identifier:name
                {: RESULT = withRange(new NamedType(name), nameleft, nameright); :}
             ;
+
+ReferenceType ::= MEMORY:anchor Type:type
+                   {: RESULT = withRange(new ReferenceType(type), anchorleft, anchorright); :}
+                ;
 
 StructureType ::= CURL_L:l StructureTypeMemberList:members CURL_R:r
                    {: RESULT = withRange(new StructureType(members), lleft, rright); :}

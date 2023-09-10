@@ -40,6 +40,7 @@ class ScannerTest {
         ")".firstToken().shouldBeToken(Sym.PAREN_R)
         "{".firstToken().shouldBeToken(Sym.CURL_L)
         "}".firstToken().shouldBeToken(Sym.CURL_R)
+        "&".firstToken().shouldBeToken(Sym.MEMORY)
     }
 
     @Test
@@ -88,7 +89,7 @@ class ScannerTest {
             // All operators:
             + - ^ * / % == != < <= > >=
             // Arrows and remaining stuff
-            <- -> ( ) { } : , . := =
+            <- -> ( ) { } : , . := = &
         """.shouldContainTokensAndEOF(
             Sym.IDENTIFIER,
             Sym.IDENTIFIER,
@@ -130,7 +131,8 @@ class ScannerTest {
             Sym.COMMA,
             Sym.DOT,
             Sym.ASSIGNMENT,
-            Sym.EQ
+            Sym.EQ,
+            Sym.MEMORY
         )
     }
 

@@ -159,29 +159,26 @@ sealed class Syntax {
         ) : Syntax()
     }
 
-//    /**
-//     * An expression allocating a new object in memory (during forward execution)
-//     * or deleting an object from memory (during backward direction). Objects are
-//     * always in a zeroed state.
-//     * ```
-//     *  new Type
-//     *  del Type
-//     * ```
-//     */
-//    data class AllocationExpression(
-//        val direction: Direction,
-//        val type: Type
-//    ) : ResourceExpression()
-//
-//    /**
-//     * An expression used to access in-memory values.
-//     * ```
-//     *  ~ Expr
-//     * ```
-//     */
-//    data class ReferenceExpression(
-//        val storage: Storage
-//    ) : ResourceExpression()
+    /**
+     * An expression allocating some value in memory (during forward execution)
+     * or releasing some value from memory (during backward direction).
+     * ```
+     * & value
+     * ```
+     */
+    data class AllocationExpression(
+        val value: ResourceExpression
+    ) : ResourceExpression()
+
+    /**
+     * An expression used to access in-memory values.
+     * ```
+     *  storage.path&
+     * ```
+     */
+    data class DereferencedStorage(
+        val storage: Storage
+    ) : Storage()
 
     /**
      * A storage is some modifiable value (e.g. local on the stack frame or in global memory).
@@ -292,12 +289,15 @@ sealed class Syntax {
         val name: Identifier
     ) : Type()
 
-//    /**
-//     * A type representing values in global memory.
-//     */
-//    data class ReferenceType(
-//        val baseType: Type
-//    ) : Type()
+    /**
+     * A type representing values in global memory.
+     * ```
+     * &Type
+     * ```
+     */
+    data class ReferenceType(
+        val baseType: Type
+    ) : Type()
 
     /**
      * A type containing different members with own types.

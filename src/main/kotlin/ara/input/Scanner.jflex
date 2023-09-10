@@ -67,6 +67,7 @@ Decimal     = [0-9]+
 "."         { return token(DOT); }
 "="         { return token(EQ); }
 ":="        { return token(ASSIGNMENT); }
+"&"         { return token(MEMORY); }
 
 "+"         { return token(OPERATOR_ADD); }
 "-"         { return token(OPERATOR_SUB); }

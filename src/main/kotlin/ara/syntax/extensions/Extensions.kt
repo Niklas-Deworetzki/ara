@@ -1,5 +1,6 @@
 package ara.syntax.extensions
 
+import ara.Direction
 import ara.syntax.Syntax
 import ara.types.Type
 
@@ -18,3 +19,8 @@ val Syntax.Program.types: List<Syntax.TypeDefinition>
 fun Syntax.RoutineDefinition.lookupVariableType(variable: Syntax.Identifier): Type? =
     this.localEnvironment.getVariable(variable)
 
+fun Syntax.Control.isEntryPoint(): Boolean =
+    this.direction == Direction.BACKWARD
+
+fun Syntax.Control.isExitPoint(): Boolean =
+    this.direction == Direction.FORWARD

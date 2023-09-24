@@ -10,6 +10,9 @@ import ara.syntax.Typeable
 import ara.syntax.extensions.lookupVariableType
 import ara.syntax.extensions.routines
 import ara.types.Type
+import ara.types.extensions.getMembersType
+import ara.types.extensions.getReferenceBase
+import ara.types.extensions.isReferenceType
 import ara.utils.combineWith
 
 /**
@@ -62,6 +65,9 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
                 is Syntax.StructureLiteral ->
                     checkStructureLiteral(this)
 
+                is Syntax.AllocationExpression ->
+                    checkAllocationExpression(this)
+
                 is Syntax.MemberAccess ->
                     checkMemberAccess(this)
 
@@ -70,6 +76,9 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
 
                 is Syntax.TypedStorage ->
                     checkTypedStorage(this)
+
+                is Syntax.DereferencedStorage ->
+                    checkDereferencedStorage(this)
 
                 is Syntax.ArithmeticValue ->
                     this.value.computedType()
@@ -172,9 +181,14 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
             return Type.fromMembers(typedMembers)
         }
 
+        private fun checkAllocationExpression(expression: Syntax.AllocationExpression): Type {
+            val valueType = expression.value.computedType()
+            return Type.Reference(valueType)
+        }
+
         private fun checkMemberAccess(memberAccess: Syntax.MemberAccess): Type {
             val structureType = memberAccess.storage.computedType()
-            val memberType = structureType.getMemberType(memberAccess.member.name)
+            val memberType = structureType.getMembersType(memberAccess.member.name)
 
             if (memberType == null) {
                 reportError("Type $structureType does not have a member named ${memberAccess.member}.")
@@ -203,6 +217,16 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
                 "Type of expression must be compatible with type defined type hint."
             }
             return hintedType
+        }
+
+        private fun checkDereferencedStorage(storage: Syntax.DereferencedStorage): Type {
+            val storageType = storage.storage.computedType()
+            if (!storageType.isReferenceType()) {
+                reportError("Value must be a reference.")
+                    .withPositionOf(storage.storage)
+                return Type.Variable()
+            }
+            return storageType.getReferenceBase()!!
         }
 
         private fun checkArithmeticBinary(binary: Syntax.ArithmeticBinary): Type {
@@ -244,16 +268,5 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
             }
             return Type.Comparison
         }
-    }
-
-    private tailrec fun Type.getMemberType(name: String): Type? = when (this) {
-        is Type.Structure ->
-            members.find { it.name == name }?.type
-
-        is Type.Variable ->
-            type?.getMemberType(name)
-
-        else ->
-            null
     }
 }

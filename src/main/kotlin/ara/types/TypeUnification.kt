@@ -2,45 +2,53 @@ package ara.types
 
 object TypeUnification {
 
+    private val SUCCESS: Error? = null
+
     fun unify(a: Type, b: Type): Error? {
-        if (a == b) return null
+        when {
+            a == b ->
+                return SUCCESS
 
-        if (a is Type.Variable) {
-            if (a.type != null) {
-                return unify(a.type!!, b)
+            a is Type.Variable -> {
+                if (a.type != null)
+                    return unify(a.type!!, b)
 
-            } else if (a in b) {
-                return Error.RecursiveType
+                if (a in b)
+                    return Error.RecursiveType
 
-            } else {
                 a.type = b
+                return SUCCESS
             }
-            return null
 
-        } else if (b is Type.Variable) {
-            return unify(b, a)
+            a is Type.ResolvedName ->
+                return unify(a.type, b)
 
-        } else if (a is Type.Structure && b is Type.Structure) {
-            if (a.members.size != b.members.size)
-                return Error.DifferentStructSize(a.members, b.members)
+            b is Type.Variable || b is Type.ResolvedName ->
+                return unify(b, a)
 
-            val maxIndex = a.members.size
-            for (i in 0 until maxIndex) {
-                val aMember = a.members[i]
-                val bMember = b.members[i]
+            a is Type.Reference && b is Type.Reference ->
+                return unify(a.base, b.base)
 
-                if (aMember.name != bMember.name)
-                    return Error.DifferentMemberNames(i, aMember, bMember)
+            a is Type.Structure && b is Type.Structure -> {
+                if (a.members.size != b.members.size)
+                    return Error.DifferentStructSize(a.members, b.members)
 
-                val recursiveResult = unify(aMember.type, bMember.type)
-                if (recursiveResult != null)
-                    return Error.DifferentMemberTypes(i, aMember, bMember, recursiveResult)
+                val maxIndex = a.members.size
+                for (i in 0 until maxIndex) {
+                    val aMember = a.members[i]
+                    val bMember = b.members[i]
+
+                    if (aMember.name != bMember.name)
+                        return Error.DifferentMemberNames(i, aMember, bMember)
+
+                    val recursiveResult = unify(aMember.type, bMember.type)
+                    if (recursiveResult != null)
+                        return Error.DifferentMemberTypes(i, aMember, bMember, recursiveResult)
+                }
+                return SUCCESS
             }
-            return null
-
-        } else {
-            return Error.NotUnifiable(a, b)
         }
+        return Error.NotUnifiable(a, b)
     }
 
 

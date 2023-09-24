@@ -45,8 +45,9 @@ terminal String     HASHCOMMENT, UNKNOWN;
 
 terminal    ROUTINE, TYPE;
 terminal    CALL, UNCALL;
-terminal    COLON, COMMA, DOT, EQ;
+terminal    COLON, DOT, SEMIC, COMMA, EQ;
 terminal    ASSIGNMENT;
+terminal    ROUTINE_LINEBREAK;
 terminal    MEMORY;
 
 terminal    OPERATOR_ADD, OPERATOR_SUB, OPERATOR_XOR, OPERATOR_MUL, OPERATOR_DIV, OPERATOR_MOD;
@@ -62,7 +63,8 @@ non terminal List<Definition>           GlobalDefinitionList;
 non terminal Definition                 Definition, TypeDefinition, RoutineDefinition;
 non terminal List<Parameter>            ParameterList, ParameterListTail;
 non terminal Parameter                  Parameter;
-non terminal List<Instruction>          InstructionList;
+non terminal                            Terminator, OptionalTerminator;
+non terminal List<Instruction>          InstructionList, TerminatedInstructionList;
 non terminal Instruction                Instruction, ArithmeticAssignment, MultiAssignment, Unconditional, Conditional, Call;
 non terminal List<ResourceExpression>   ArgumentList, ArgumentListTail;
 non terminal ResourceExpression         ResourceExpression, IntegerLiteral, StructureLiteral, AllocationExpression;
@@ -153,11 +155,25 @@ Parameter ::= Identifier:name
 //
 //
 
-InstructionList ::= Instruction:head InstructionList:tail
-                     {: RESULT = cons(head, tail); :}
-                  | Epsilon
-                     {: RESULT = nil(); :}
+OptionalTerminator ::= Terminator
+                     | Epsilon
+                     ;
+
+Terminator ::= ROUTINE_LINEBREAK Terminator
+             | ROUTINE_LINEBREAK
+             | SEMIC Terminator
+             | SEMIC
+             ;
+
+InstructionList ::= OptionalTerminator TerminatedInstructionList:list
+                     {: RESULT = list; :}
                   ;
+
+TerminatedInstructionList ::= Instruction:head Terminator TerminatedInstructionList:tail
+                               {: RESULT = cons(head, tail); :}
+                            | Epsilon
+                               {: RESULT = nil(); :}
+                            ;
 
 Instruction ::= ArithmeticAssignment:result
                  {: RESULT = result; :}
@@ -272,6 +288,8 @@ NamedStorage ::= Identifier:name
 StorageSuffixes ::= TypedStorageSuffix:head StorageSuffixes:tail
                      {: RESULT = cons(head, tail); :}
                   | MemberAccessSuffix:head StorageSuffixes:tail
+                     {: RESULT = cons(head, tail); :}
+                  | DereferenceSuffix:head StorageSuffixes:tail
                      {: RESULT = cons(head, tail); :}
                   | Epsilon
                      {: RESULT = nil(); :}

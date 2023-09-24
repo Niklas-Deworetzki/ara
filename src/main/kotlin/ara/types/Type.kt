@@ -4,6 +4,12 @@ import ara.utils.NonEmptyList
 import ara.utils.NonEmptyList.Companion.toNonEmptyList
 
 sealed class Type {
+
+    sealed interface MaterializedType
+
+    fun <R> applyOnMaterialized(notInitialized: R, f: (MaterializedType) -> R): R =
+        Companion.applyOnMaterialized(this, notInitialized, f)
+
     data class Variable(var type: Type? = null) : Type() {
         inline fun <T> fold(zero: () -> T, function: (Type) -> T): T = when (val containedType = type) {
             null -> zero()
@@ -65,6 +71,19 @@ sealed class Type {
             members.isEmpty() -> Unit
             else -> Structure(members.toNonEmptyList())
         }
+
+        private tailrec fun <R> applyOnMaterialized(type: Type, notInitialized: R, f: (MaterializedType) -> R): R =
+            when (type) {
+                is MaterializedType ->
+                    f(type)
+
+                is ResolvedName ->
+                    applyOnMaterialized(type, notInitialized, f)
+
+                is Variable ->
+                    if (type.type == null) notInitialized
+                    else applyOnMaterialized(type.type!!, notInitialized, f)
+            }
     }
 
     interface Algebra<T> {

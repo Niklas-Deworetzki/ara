@@ -61,7 +61,7 @@ sealed class Type {
             representation
 
         is Reference ->
-            "&$base"
+            "[$base]"
 
         is ResolvedName ->
             name

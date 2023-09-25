@@ -25,16 +25,6 @@ import static ara.input.Sym.*;
 %eofval}
 
 %{
-    private boolean isInsideRoutine = false;
-
-    private void startRoutine() {
-        this.isInsideRoutine = true;
-    }
-
-    private void endRoutine() {
-        this.isInsideRoutine = false;
-    }
-
     private Token token(int tokenId) {
         return Token.withId(tokenId, yychar, yychar + yylength());
     }
@@ -52,8 +42,7 @@ import static ara.input.Sym.*;
     }
 %}
 
-WhiteSpace  = [^\S\r\n]
-LineBreak   = (\r\n|\r|\n)
+WhiteSpace  = \s+
 
 LineComment = "//".*
 HashComment = "#".*
@@ -63,10 +52,9 @@ Decimal     = [0-9]+
 
 %%
 
+^{HashComment}             { return token(HASHCOMMENT, yytext().substring(1)); }
 {WhiteSpace}                         { /* Ignore whitespace */ }
-{LineBreak}+                         { if (isInsideRoutine) return token(ROUTINE_LINEBREAK); }
 {LineComment}                        { /* Ignore comments */ }
-{HashComment}                        { return token(HASHCOMMENT, yytext().substring(1)); }
 
 
 "routine"   { return token(ROUTINE); }
@@ -77,10 +65,9 @@ Decimal     = [0-9]+
 ":"         { return token(COLON); }
 ","         { return token(COMMA); }
 "."         { return token(DOT); }
-";"         { return token(SEMIC); }
 "="         { return token(EQ); }
 ":="        { return token(ASSIGNMENT); }
-"&"         { return token(MEMORY); }
+"#"         { return token(HASH); }
 
 "+"         { return token(OPERATOR_ADD); }
 "-"         { return token(OPERATOR_SUB); }
@@ -99,8 +86,10 @@ Decimal     = [0-9]+
 "->"        { return token(ARROW_R); }
 "("         { return token(PAREN_L); }
 ")"         { return token(PAREN_R); }
-"{"         { startRoutine(); return token(CURL_L); }
-"}"         { endRoutine(); return token(CURL_R); }
+"{"         { return token(CURL_L); }
+"}"         { return token(CURL_R); }
+"["         { return token(BRAC_L); }
+"]"         { return token(BRAC_R); }
 
 {Identifier}    { return token(IDENTIFIER, yytext()); }
 {Decimal}       { try {

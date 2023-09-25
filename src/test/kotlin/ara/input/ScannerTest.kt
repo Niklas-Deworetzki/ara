@@ -40,7 +40,8 @@ class ScannerTest {
         ")".firstToken().shouldBeToken(Sym.PAREN_R)
         "{".firstToken().shouldBeToken(Sym.CURL_L)
         "}".firstToken().shouldBeToken(Sym.CURL_R)
-        "&".firstToken().shouldBeToken(Sym.MEMORY)
+        "[".firstToken().shouldBeToken(Sym.BRAC_L)
+        "]".firstToken().shouldBeToken(Sym.BRAC_R)
     }
 
     @Test
@@ -58,12 +59,21 @@ class ScannerTest {
 
     @Test
     fun scannerExtractsTextFromHashComments() {
-        val token = """
-            #I am a special comment.
-        """.firstToken()
+        val token =
+"""
+#I am a special comment.
+"""
+    .firstToken()
 
         token.shouldBeToken(Sym.HASHCOMMENT)
         token.value.shouldBe("I am a special comment.")
+    }
+
+    @Test
+    fun scannerExtractsHashCommentAtStartOfFile() {
+        val token = "# I am a comment!".firstToken()
+
+        token.shouldBeToken(Sym.HASHCOMMENT)
     }
 
     @Test
@@ -89,7 +99,7 @@ class ScannerTest {
             // All operators:
             + - ^ * / % == != < <= > >=
             // Arrows and remaining stuff
-            <- -> ( ) { } : , . := = &
+            <- -> ( ) { } [ ] : , . := = #
         """.shouldContainTokensAndEOF(
             Sym.IDENTIFIER,
             Sym.IDENTIFIER,
@@ -127,12 +137,14 @@ class ScannerTest {
             Sym.PAREN_R,
             Sym.CURL_L,
             Sym.CURL_R,
+            Sym.BRAC_L,
+            Sym.BRAC_R,
             Sym.COLON,
             Sym.COMMA,
             Sym.DOT,
             Sym.ASSIGNMENT,
             Sym.EQ,
-            Sym.MEMORY
+            Sym.HASH
         )
     }
 
@@ -151,6 +163,13 @@ class ScannerTest {
                     .shouldBeToken(Sym.IDENTIFIER)
             }
         }
+    }
+
+    @Test
+    fun scannerRecognizesHashInMiddleOfLine() {
+        val token = " #".firstToken()
+
+        token.shouldBeToken(Sym.HASH)
     }
 
     private fun String.shouldContainTokensAndEOF(vararg types: Int) {

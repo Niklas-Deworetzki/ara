@@ -45,10 +45,8 @@ terminal String     HASHCOMMENT, UNKNOWN;
 
 terminal    ROUTINE, TYPE;
 terminal    CALL, UNCALL;
-terminal    COLON, DOT, SEMIC, COMMA, EQ;
+terminal    COLON, DOT, COMMA, EQ, HASH;
 terminal    ASSIGNMENT;
-terminal    ROUTINE_LINEBREAK;
-terminal    MEMORY;
 
 terminal    OPERATOR_ADD, OPERATOR_SUB, OPERATOR_XOR, OPERATOR_MUL, OPERATOR_DIV, OPERATOR_MOD;
 terminal    OPERATOR_EQU, OPERATOR_NEQ, OPERATOR_LST, OPERATOR_LSE, OPERATOR_GRT, OPERATOR_GRE;
@@ -56,6 +54,7 @@ terminal    OPERATOR_EQU, OPERATOR_NEQ, OPERATOR_LST, OPERATOR_LSE, OPERATOR_GRT
 terminal    ARROW_L, ARROW_R;
 terminal    PAREN_L, PAREN_R;
 terminal    CURL_L, CURL_R;
+terminal    BRAC_L, BRAC_R;
 
 non terminal Program                    Program;
 non terminal Identifier                 Identifier;
@@ -63,8 +62,7 @@ non terminal List<Definition>           GlobalDefinitionList;
 non terminal Definition                 Definition, TypeDefinition, RoutineDefinition;
 non terminal List<Parameter>            ParameterList, ParameterListTail;
 non terminal Parameter                  Parameter;
-non terminal                            Terminator, OptionalTerminator;
-non terminal List<Instruction>          InstructionList, TerminatedInstructionList;
+non terminal List<Instruction>          InstructionList;
 non terminal Instruction                Instruction, ArithmeticAssignment, MultiAssignment, Unconditional, Conditional, Call;
 non terminal List<ResourceExpression>   ArgumentList, ArgumentListTail;
 non terminal ResourceExpression         ResourceExpression, IntegerLiteral, StructureLiteral, AllocationExpression;
@@ -155,25 +153,11 @@ Parameter ::= Identifier:name
 //
 //
 
-OptionalTerminator ::= Terminator
-                     | Epsilon
-                     ;
-
-Terminator ::= ROUTINE_LINEBREAK Terminator
-             | ROUTINE_LINEBREAK
-             | SEMIC Terminator
-             | SEMIC
-             ;
-
-InstructionList ::= OptionalTerminator TerminatedInstructionList:list
-                     {: RESULT = list; :}
+InstructionList ::= Instruction:head InstructionList:tail
+                     {: RESULT = cons(head, tail); :}
+                  | Epsilon
+                     {: RESULT = nil(); :}
                   ;
-
-TerminatedInstructionList ::= Instruction:head Terminator TerminatedInstructionList:tail
-                               {: RESULT = cons(head, tail); :}
-                            | Epsilon
-                               {: RESULT = nil(); :}
-                            ;
 
 Instruction ::= ArithmeticAssignment:result
                  {: RESULT = result; :}
@@ -265,8 +249,8 @@ IntegerLiteral ::= INTEGER:value
                     {: RESULT = withRange(new IntegerLiteral(value), valueleft, valueright); :}
                  ;
 
-AllocationExpression ::= MEMORY:anchor ResourceExpression:expression
-                          {: RESULT = withRange(new AllocationExpression(expression), anchorleft, anchorright); :}
+AllocationExpression ::= BRAC_L:l ResourceExpression:expression BRAC_R:r
+                          {: RESULT = withRange(new AllocationExpression(expression), lleft, rright); :}
                        ;
 
 Storage ::= BaseStorage:base StorageSuffixes:extensions
@@ -303,7 +287,7 @@ MemberAccessSuffix ::= DOT:l Identifier:member
                         {: RESULT = (base) -> withRange(new MemberAccess(base, member), lleft, memberright); :}
                      ;
 
-DereferenceSuffix ::= MEMORY:anchor
+DereferenceSuffix ::= HASH:anchor
                        {: RESULT = (base) -> withRange(new DereferencedStorage(base), anchorleft, anchorright); :}
                     ;
 
@@ -359,8 +343,8 @@ NamedType ::= Identifier:name
                {: RESULT = withRange(new NamedType(name), nameleft, nameright); :}
             ;
 
-ReferenceType ::= MEMORY:anchor Type:type
-                   {: RESULT = withRange(new ReferenceType(type), anchorleft, anchorright); :}
+ReferenceType ::= BRAC_L:l Type:type BRAC_R:r
+                   {: RESULT = withRange(new ReferenceType(type), lleft, rright); :}
                 ;
 
 StructureType ::= CURL_L:l StructureTypeMemberList:members CURL_R:r

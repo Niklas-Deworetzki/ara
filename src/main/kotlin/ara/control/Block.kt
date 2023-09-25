@@ -21,9 +21,9 @@ class Block(private val instructions: List<Syntax.Instruction>) : Iterable<Synta
 
     companion object {
         fun Syntax.Instruction.isEndOfBlock(): Boolean =
-            this is Syntax.Control && this.isEntryPoint()
+            this is Syntax.Control && this.isExitPoint()
 
         fun Syntax.Instruction.isBeginOfBlock(): Boolean =
-            this is Syntax.Control && this.isExitPoint()
+            this is Syntax.Control && this.isEntryPoint()
     }
 }

@@ -95,7 +95,7 @@ sealed class Type {
 
     interface Algebra<T> : (Type) -> T {
         fun builtin(builtin: Builtin): T
-        fun reference(base: T): T
+        fun reference(base: Type): T
         fun structure(memberNames: NonEmptyList<String>, memberValues: NonEmptyList<T>): T
         fun uninitializedVariable(): T
 
@@ -107,7 +107,7 @@ sealed class Type {
                 builtin(type)
 
             is Reference ->
-                reference(evaluate(type.base))
+                reference(type.base)
 
             is Structure ->
                 structure(

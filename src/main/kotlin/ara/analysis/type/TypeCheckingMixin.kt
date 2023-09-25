@@ -1,12 +1,12 @@
 package ara.analysis.type
 
-import ara.analysis.type.TypeIsInstantiated.isInstantiated
 import ara.reporting.Message
 import ara.syntax.Syntax
 import ara.syntax.extensions.lookupVariableType
 import ara.types.Type
 import ara.types.TypeUnification
 import ara.types.TypeUnification.unify
+import ara.types.extensions.isInstantiated
 import kotlin.math.max
 
 interface TypeCheckingMixin {

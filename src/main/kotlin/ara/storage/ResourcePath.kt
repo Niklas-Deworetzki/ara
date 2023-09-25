@@ -14,9 +14,6 @@ private constructor(private val path: List<String>) {
     fun subPath(indexIncluded: Int): ResourcePath =
         ResourcePath(path.subList(0, indexIncluded + 1))
 
-    fun appended(accessor: Syntax.Identifier): ResourcePath =
-        ResourcePath(path + accessor.name)
-
     override fun equals(other: Any?): Boolean {
         return other is ResourcePath && other.path == this.path
     }

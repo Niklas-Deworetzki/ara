@@ -4,20 +4,40 @@ import ara.syntax.Syntax
 
 object ResourceAllocation {
 
-    fun Syntax.Storage.asResourcePath(): ResourcePath = when (this) {
-        is Syntax.NamedStorage ->
-            ResourcePath.ofIdentifier(this.name)
+    fun Syntax.Storage.asResourcePath(): ResourcePath {
+        val segments = ArrayDeque<String>()
+        var storage = this
 
-        is Syntax.TypedStorage ->
-            this.storage.asResourcePath()
+        while (true) {
+            when (storage) {
+                is Syntax.NamedStorage -> {
+                    segments.addFirst(storage.name.name)
+                    return ResourcePath.of(segments)
+                }
 
-        is Syntax.MemberAccess ->
-            this.storage.asResourcePath().appended(this.member)
+                is Syntax.MemberAccess -> {
+                    segments.addFirst(storage.member.name)
+                    storage = storage.storage
+                }
+
+                is Syntax.DereferencedStorage -> {
+                    segments.clear()
+                    storage = storage.storage
+                }
+
+                is Syntax.TypedStorage -> {
+                    storage = storage.storage
+                }
+            }
+        }
     }
 
     fun Syntax.ResourceExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {
         is Syntax.Storage ->
             listOf(this.asResourcePath())
+
+        is Syntax.AllocationExpression ->
+            this.value.asResourcePaths()
 
         is Syntax.IntegerLiteral ->
             emptyList()

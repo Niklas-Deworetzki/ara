@@ -150,7 +150,10 @@ protected constructor(val root: InnerNode<V>) {
         private class DescriptorConstructionAlgebra<V>(val defaultValue: V) :
             Type.Algebra<DescriptorNode<V>> {
 
-            override fun builtin(builtin: Type.BuiltinType): DescriptorNode<V> =
+            override fun builtin(builtin: Type.Builtin): DescriptorNode<V> =
+                LeafNode(defaultValue)
+
+            override fun reference(base: Type): DescriptorNode<V> =
                 LeafNode(defaultValue)
 
             override fun uninitializedVariable(): DescriptorNode<V> =

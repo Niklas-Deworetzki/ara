@@ -12,7 +12,6 @@ import ara.syntax.extensions.routines
 import ara.types.Type
 import ara.types.extensions.getMembersType
 import ara.types.extensions.getReferenceBase
-import ara.types.extensions.isReferenceType
 import ara.utils.combineWith
 
 /**
@@ -69,7 +68,7 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
                     checkAllocationExpression(this)
 
                 is Syntax.MemberAccess ->
-                    checkMemberAccess(this)
+                    checkMemberAccess(this.storage, this.member)
 
                 is Syntax.NamedStorage ->
                     checkNamedStorage(this)
@@ -78,7 +77,13 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
                     checkTypedStorage(this)
 
                 is Syntax.DereferencedStorage ->
-                    checkDereferencedStorage(this)
+                    checkDereference(this.storage)
+
+                is Syntax.DereferencedMemory ->
+                    checkDereference(this.memory)
+
+                is Syntax.MemoryMemberAccess ->
+                    checkMemberAccess(this.memory, this.member)
 
                 is Syntax.ArithmeticValue ->
                     this.value.computedType()
@@ -186,18 +191,6 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
             return Type.Reference(valueType)
         }
 
-        private fun checkMemberAccess(memberAccess: Syntax.MemberAccess): Type {
-            val structureType = memberAccess.storage.computedType()
-            val memberType = structureType.getMembersType(memberAccess.member.name)
-
-            if (memberType == null) {
-                reportError("Type $structureType does not have a member named ${memberAccess.member}.")
-                    .withPositionOf(memberAccess.member)
-                return Type.Variable()
-            }
-            return memberType
-        }
-
         private fun checkNamedStorage(storage: Syntax.NamedStorage): Type {
             val type = routine.lookupVariableType(storage.name)
 
@@ -219,14 +212,28 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
             return hintedType
         }
 
-        private fun checkDereferencedStorage(storage: Syntax.DereferencedStorage): Type {
-            val storageType = storage.storage.computedType()
-            if (!storageType.isReferenceType()) {
-                reportError("Value must be a reference.")
-                    .withPositionOf(storage.storage)
+        private fun checkMemberAccess(typeable: Typeable, member: Syntax.Identifier): Type {
+            val structureType = typeable.computedType()
+            val memberType = structureType.getMembersType(member.name)
+
+            if (memberType == null) {
+                reportError("Type $structureType does not have a member named ${member}.")
+                    .withPositionOf(member)
                 return Type.Variable()
             }
-            return storageType.getReferenceBase()!!
+            return memberType
+        }
+
+        private fun checkDereference(reference: Typeable): Type {
+            val storageType = reference.computedType()
+            val referenceBase = storageType.getReferenceBase()
+
+            if (referenceBase == null) {
+                reportError("Value must be a reference as required by dereference operator.")
+                    .withPositionOf(reference)
+                return Type.Variable()
+            }
+            return referenceBase
         }
 
         private fun checkArithmeticBinary(binary: Syntax.ArithmeticBinary): Type {

@@ -170,6 +170,8 @@ sealed class Syntax {
         val value: ResourceExpression
     ) : ResourceExpression()
 
+    sealed class Memory : ResourceExpression()
+
     /**
      * An expression used to access in-memory values.
      * ```
@@ -178,7 +180,28 @@ sealed class Syntax {
      */
     data class DereferencedStorage(
         val storage: Storage
-    ) : Storage()
+    ) : Memory()
+
+    /**
+     * An expression used to access in-memory values from in-memory values.
+     * ```
+     * variable&&
+     * ```
+     */
+    data class DereferencedMemory(
+        val memory: Memory
+    ) : Memory()
+
+    /**
+     * An expression used to access members of in-memory values.
+     * ```
+     * variable&.member
+     * ```
+     */
+    data class MemoryMemberAccess(
+        val memory: Memory,
+        val member: Identifier
+    ) : Memory()
 
     /**
      * A storage is some modifiable value (e.g. local on the stack frame or in global memory).

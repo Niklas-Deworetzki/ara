@@ -30,6 +30,7 @@ private <S extends Syntax> S withRange(S syntax, int left, int right) {
 
 @Override
 public void syntax_error(Symbol currentToken) {
+    expected_token_ids(); // First call sometimes returns invalid results.
     reporter.reportSyntaxError((Token) currentToken, expected_token_ids());
 }
 
@@ -45,7 +46,7 @@ terminal String     HASHCOMMENT, UNKNOWN;
 
 terminal    ROUTINE, TYPE;
 terminal    CALL, UNCALL;
-terminal    COLON, DOT, COMMA, EQ, HASH;
+terminal    COLON, DOT, SEMIC, COMMA, EQ, AMPERSAND;
 terminal    ASSIGNMENT;
 
 terminal    OPERATOR_ADD, OPERATOR_SUB, OPERATOR_XOR, OPERATOR_MUL, OPERATOR_DIV, OPERATOR_MOD;
@@ -54,7 +55,6 @@ terminal    OPERATOR_EQU, OPERATOR_NEQ, OPERATOR_LST, OPERATOR_LSE, OPERATOR_GRT
 terminal    ARROW_L, ARROW_R;
 terminal    PAREN_L, PAREN_R;
 terminal    CURL_L, CURL_R;
-terminal    BRAC_L, BRAC_R;
 
 non terminal Program                    Program;
 non terminal Identifier                 Identifier;
@@ -62,7 +62,7 @@ non terminal List<Definition>           GlobalDefinitionList;
 non terminal Definition                 Definition, TypeDefinition, RoutineDefinition;
 non terminal List<Parameter>            ParameterList, ParameterListTail;
 non terminal Parameter                  Parameter;
-non terminal List<Instruction>          InstructionList;
+non terminal List<Instruction>          Body, InstructionList;
 non terminal Instruction                Instruction, ArithmeticAssignment, MultiAssignment, Unconditional, Conditional, Call;
 non terminal List<ResourceExpression>   ArgumentList, ArgumentListTail;
 non terminal ResourceExpression         ResourceExpression, IntegerLiteral, StructureLiteral, AllocationExpression;
@@ -70,7 +70,10 @@ non terminal List<StructureLiteral.Member> StructureLiteralMembersList, Structur
 non terminal StructureLiteral.Member    StructureLiteralMember;
 non terminal Storage                    Storage, BaseStorage, NamedStorage;
 non terminal List<Function<Storage, Storage>> StorageSuffixes;
-non terminal Function<Storage, Storage> TypedStorageSuffix, MemberAccessSuffix, DereferenceSuffix;
+non terminal Function<Storage, Storage> TypedStorageSuffix, MemberAccessSuffix;
+non terminal Memory                     Memory;
+non terminal List<Function<Memory, Memory>> MemorySuffixes;
+non terminal Function<Memory, Memory>   DereferencedMemorySuffix, MemoryMemberSuffix;
 non terminal ArithmeticModifier         ArithmeticModifier;
 non terminal ArithmeticExpression       ArithmeticExpression, ArithmeticBinary, ArithmeticValue;
 non terminal ConditionalExpression      ConditionalExpression, ComparativeBinary;
@@ -121,11 +124,15 @@ TypeDefinition ::= TYPE:l Identifier:name EQ Type:type
                     {: RESULT = withRange(new TypeDefinition(name, type), lleft, typeright); :}
                  ;
 
-RoutineDefinition ::= ROUTINE:l Identifier:name PAREN_L ParameterList:in ARROW_R ParameterList:out PAREN_R CURL_L InstructionList:body CURL_R:r
-                       {: RESULT = withRange(new RoutineDefinition(name, in, out, body), lleft, rright); :}
-                    | ROUTINE:l Identifier:name PAREN_L ParameterList:in PAREN_R ARROW_R PAREN_L ParameterList:out PAREN_R CURL_L InstructionList:body CURL_R:r
-                       {: RESULT = withRange(new RoutineDefinition(name, in, out, body), lleft, rright); :}
+RoutineDefinition ::= ROUTINE:anchor Identifier:name PAREN_L ParameterList:in ARROW_R ParameterList:out PAREN_R Body:body
+                       {: RESULT = withRange(new RoutineDefinition(name, in, out, body), anchorleft, bodyright); :}
+                    | ROUTINE:anchor Identifier:name PAREN_L ParameterList:in PAREN_R ARROW_R PAREN_L ParameterList:out Body:body
+                       {: RESULT = withRange(new RoutineDefinition(name, in, out, body), anchorleft, bodyright); :}
                     ;
+
+Body ::= CURL_L InstructionList:body CURL_R
+          {: RESULT = body; :}
+       ;
 
 //
 //
@@ -153,7 +160,7 @@ Parameter ::= Identifier:name
 //
 //
 
-InstructionList ::= Instruction:head InstructionList:tail
+InstructionList ::= Instruction:head SEMIC InstructionList:tail
                      {: RESULT = cons(head, tail); :}
                   | Epsilon
                      {: RESULT = nil(); :}
@@ -223,6 +230,8 @@ ResourceExpression ::= IntegerLiteral:result
                         {: RESULT = result; :}
                      | Storage:result
                         {: RESULT = result; :}
+                     | Memory:result
+                        {: RESULT = result; :}
                      ;
 
 StructureLiteral ::= CURL_L:l StructureLiteralMembersList:members CURL_R:r
@@ -249,13 +258,13 @@ IntegerLiteral ::= INTEGER:value
                     {: RESULT = withRange(new IntegerLiteral(value), valueleft, valueright); :}
                  ;
 
-AllocationExpression ::= BRAC_L:l ResourceExpression:expression BRAC_R:r
-                          {: RESULT = withRange(new AllocationExpression(expression), lleft, rright); :}
+AllocationExpression ::= AMPERSAND:anchor ResourceExpression:expression
+                          {: RESULT = withRange(new AllocationExpression(expression), anchorleft, anchorright); :}
                        ;
 
-Storage ::= BaseStorage:base StorageSuffixes:extensions
+Storage ::= BaseStorage:base StorageSuffixes:suffixes
              {: RESULT = base;
-                for (var constructor : extensions) {
+                for (var constructor : suffixes) {
                     RESULT = constructor.apply(RESULT);
                 }
              :}
@@ -273,8 +282,6 @@ StorageSuffixes ::= TypedStorageSuffix:head StorageSuffixes:tail
                      {: RESULT = cons(head, tail); :}
                   | MemberAccessSuffix:head StorageSuffixes:tail
                      {: RESULT = cons(head, tail); :}
-                  | DereferenceSuffix:head StorageSuffixes:tail
-                     {: RESULT = cons(head, tail); :}
                   | Epsilon
                      {: RESULT = nil(); :}
                   ;
@@ -287,9 +294,29 @@ MemberAccessSuffix ::= DOT:l Identifier:member
                         {: RESULT = (base) -> withRange(new MemberAccess(base, member), lleft, memberright); :}
                      ;
 
-DereferenceSuffix ::= HASH:anchor
-                       {: RESULT = (base) -> withRange(new DereferencedStorage(base), anchorleft, anchorright); :}
-                    ;
+Memory ::= Storage:storage AMPERSAND:anchor MemorySuffixes:suffixes
+            {: RESULT = withRange(new DereferencedStorage(storage), anchorleft, anchorright);
+               for (var constructor : suffixes) {
+                   RESULT = constructor.apply(RESULT);
+               }
+            :}
+         ;
+
+MemorySuffixes ::= MemoryMemberSuffix:head MemorySuffixes:tail
+                    {: RESULT = cons(head, tail); :}
+                 | DereferencedMemorySuffix:head MemorySuffixes:tail
+                    {: RESULT = cons(head, tail); :}
+                 | Epsilon
+                    {: RESULT = nil(); :}
+                 ;
+
+DereferencedMemorySuffix ::= AMPERSAND:anchor
+                              {: RESULT = (base) -> withRange(new DereferencedMemory(base), anchorleft, anchorright); :}
+                           ;
+
+MemoryMemberSuffix ::= DOT:l Identifier:member
+                        {: RESULT = (base) -> withRange(new MemoryMemberAccess(base, member), lleft, memberright); :}
+                     ;
 
 //
 //
@@ -311,9 +338,7 @@ ArithmeticBinary ::= PAREN_L:l ResourceExpression:lhs BinaryOperator:op Resource
                      {: RESULT = withRange(new ArithmeticBinary(lhs, op, rhs), lhsleft, rhsright); :}
                    ;
 
-ArithmeticValue ::= PAREN_L:l ResourceExpression:value PAREN_R:r
-                     {: RESULT = withRange(new ArithmeticValue(value), lleft, rright); :}
-                  | ResourceExpression:value
+ArithmeticValue ::= ResourceExpression:value
                      {: RESULT = withRange(new ArithmeticValue(value), valueleft, valueright); :}
                   ;
 
@@ -343,8 +368,8 @@ NamedType ::= Identifier:name
                {: RESULT = withRange(new NamedType(name), nameleft, nameright); :}
             ;
 
-ReferenceType ::= BRAC_L:l Type:type BRAC_R:r
-                   {: RESULT = withRange(new ReferenceType(type), lleft, rright); :}
+ReferenceType ::= AMPERSAND:anchor Type:type
+                   {: RESULT = withRange(new ReferenceType(type), anchorleft, anchorright); :}
                 ;
 
 StructureType ::= CURL_L:l StructureTypeMemberList:members CURL_R:r

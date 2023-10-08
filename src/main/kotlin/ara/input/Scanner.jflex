@@ -64,10 +64,11 @@ Decimal     = [0-9]+
 
 ":"         { return token(COLON); }
 ","         { return token(COMMA); }
+";"         { return token(SEMIC); }
 "."         { return token(DOT); }
 "="         { return token(EQ); }
 ":="        { return token(ASSIGNMENT); }
-"#"         { return token(HASH); }
+"&"         { return token(AMPERSAND); }
 
 "+"         { return token(OPERATOR_ADD); }
 "-"         { return token(OPERATOR_SUB); }
@@ -88,8 +89,6 @@ Decimal     = [0-9]+
 ")"         { return token(PAREN_R); }
 "{"         { return token(CURL_L); }
 "}"         { return token(CURL_R); }
-"["         { return token(BRAC_L); }
-"]"         { return token(BRAC_R); }
 
 {Identifier}    { return token(IDENTIFIER, yytext()); }
 {Decimal}       { try {

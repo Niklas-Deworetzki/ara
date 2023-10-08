@@ -40,8 +40,7 @@ class ScannerTest {
         ")".firstToken().shouldBeToken(Sym.PAREN_R)
         "{".firstToken().shouldBeToken(Sym.CURL_L)
         "}".firstToken().shouldBeToken(Sym.CURL_R)
-        "[".firstToken().shouldBeToken(Sym.BRAC_L)
-        "]".firstToken().shouldBeToken(Sym.BRAC_R)
+        "&".firstToken().shouldBeToken(Sym.AMPERSAND)
     }
 
     @Test
@@ -99,7 +98,7 @@ class ScannerTest {
             // All operators:
             + - ^ * / % == != < <= > >=
             // Arrows and remaining stuff
-            <- -> ( ) { } [ ] : , . := = #
+            <- -> ( ) { } : , . := = &
         """.shouldContainTokensAndEOF(
             Sym.IDENTIFIER,
             Sym.IDENTIFIER,
@@ -137,14 +136,12 @@ class ScannerTest {
             Sym.PAREN_R,
             Sym.CURL_L,
             Sym.CURL_R,
-            Sym.BRAC_L,
-            Sym.BRAC_R,
             Sym.COLON,
             Sym.COMMA,
             Sym.DOT,
             Sym.ASSIGNMENT,
             Sym.EQ,
-            Sym.HASH
+            Sym.AMPERSAND
         )
     }
 
@@ -163,13 +160,6 @@ class ScannerTest {
                     .shouldBeToken(Sym.IDENTIFIER)
             }
         }
-    }
-
-    @Test
-    fun scannerRecognizesHashInMiddleOfLine() {
-        val token = " #".firstToken()
-
-        token.shouldBeToken(Sym.HASH)
     }
 
     private fun String.shouldContainTokensAndEOF(vararg types: Int) {

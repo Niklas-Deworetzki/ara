@@ -34,11 +34,7 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
         is Syntax.TypedStorage ->
             declare(expression.storage)
 
-        is Syntax.MemberAccess,
-        is Syntax.IntegerLiteral,
-        is Syntax.StructureLiteral,
-        is Syntax.AllocationExpression,
-        is Syntax.DereferencedStorage ->
+        else ->
             Unit
     }
 

@@ -61,26 +61,6 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
         return encounteredConflicts == 0
     }
 
-    private fun declareFromInstruction(instruction: Syntax.Instruction) = when (instruction) {
-        is Syntax.ArithmeticAssignment -> {
-            declare(instruction.src)
-            declare(instruction.dst)
-        }
-
-        is Syntax.MultiAssignment -> {
-            instruction.srcList.forEach(::declare)
-            instruction.dstList.forEach(::declare)
-        }
-
-        is Syntax.Call -> {
-            instruction.srcList.forEach(::declare)
-            instruction.dstList.forEach(::declare)
-        }
-
-        is Syntax.Conditional ->
-            Unit
-
-        is Syntax.Unconditional ->
-            Unit
-    }
+    private fun declareFromInstruction(instruction: Syntax.Instruction) =
+        instruction.resources().forEach(::declare)
 }

@@ -6,6 +6,7 @@ import ara.input.symbol.Token
 import ara.position.InputSource
 import ara.position.Range
 import ara.reporting.Message
+import ara.reporting.Message.Companion.quoted
 import ara.syntax.Syntax
 import ara.utils.formatting.formatToHumanReadable
 import ara.utils.intersects
@@ -45,14 +46,16 @@ class InputAnalysis(val source: InputSource) : Analysis<Syntax.Program>() {
             ) to "a comparison operator",
             setOf(Sym.CALL) to "call",
             setOf(Sym.UNCALL) to "uncall",
-            setOf(Sym.EQ) to "=",
-            setOf(Sym.ASSIGNMENT) to ":=",
+            setOf(Sym.EQ) to "definition operator " + "=".quoted(),
+            setOf(Sym.ASSIGNMENT) to "assignment operator " + ":=".quoted(),
+            setOf(Sym.ARROW_L) to "left arrow " + "<-".quoted(),
+            setOf(Sym.ARROW_R) to "right arrow " + "->".quoted(),
+            setOf(Sym.SEMIC) to "a semicolon",
             setOf(Sym.CURL_L) to "{",
             setOf(Sym.CURL_R) to "}",
             setOf(Sym.PAREN_L) to "(",
             setOf(Sym.PAREN_R) to ")",
-            setOf(Sym.ARROW_L) to "<-",
-            setOf(Sym.ARROW_R) to "->"
+            setOf(Sym.AMPERSAND) to "&"
         )
 
         fun translateTokenIdsToExpectedStructures(tokenIds: Set<Int>): String? {

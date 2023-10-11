@@ -1,5 +1,6 @@
 package ara.analysis
 
+import ara.storage.ResourceAllocation.resources
 import ara.syntax.Syntax
 import ara.types.Environment
 

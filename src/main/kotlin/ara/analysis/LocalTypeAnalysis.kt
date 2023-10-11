@@ -22,11 +22,9 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
     override fun reportTypeError(message: Message): Message =
         reportError(message)
 
-    override fun runAnalysis() {
-        for (routine in program.routines) {
-            InstructionTypeChecker(routine).check()
-            ensureVariablesHaveInstantiatedTypes(routine)
-        }
+    override fun runAnalysis() = forEachRoutineIn(program) {
+        InstructionTypeChecker(routine).check()
+        ensureVariablesHaveInstantiatedTypes(routine)
     }
 
     private fun ensureVariablesHaveInstantiatedTypes(routine: Syntax.RoutineDefinition) {

@@ -12,11 +12,9 @@ import ara.types.Environment
 class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
     private lateinit var currentScope: Environment
 
-    override fun runAnalysis() = program.definitions
-        .filterIsInstance<Syntax.RoutineDefinition>()
-        .forEach { routine ->
-            routine.localEnvironment = initializeLocalScope(routine)
-        }
+    override fun runAnalysis() = forEachRoutineIn(program) {
+        routine.localEnvironment = initializeLocalScope(routine)
+    }
 
     private fun initializeLocalScope(routine: Syntax.RoutineDefinition): Environment {
         currentScope = Environment(program.environment)

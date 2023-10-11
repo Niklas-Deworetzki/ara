@@ -5,6 +5,7 @@ import ara.input.InputAnalysis
 import ara.position.InputSource
 import ara.reporting.Message
 import ara.syntax.Syntax
+import ara.syntax.extensions.routines
 import ara.types.Builtins
 
 abstract class Analysis<T> {
@@ -14,7 +15,12 @@ abstract class Analysis<T> {
         if (!hasReportedErrors) action()
     }
 
-    fun <R> includeAnalysis(analysis: Analysis<R>): R {
+    protected inline fun andThen(analysisConstructor: () -> Analysis<Unit>) {
+        val analysis = analysisConstructor()
+        proceedAnalysis { includeAnalysis(analysis) }
+    }
+
+    protected fun <R> includeAnalysis(analysis: Analysis<R>): R {
         val result = analysis.runAnalysis()
         if (analysis.hasReportedErrors) {
             analysis.reportedErrors.forEach(::reportError)
@@ -64,12 +70,24 @@ abstract class Analysis<T> {
             andThen { LivenessAnalysis(program) }
             return program
         }
+    }
 
-
-        private inline fun andThen(analysisConstructor: () -> Analysis<Unit>) {
-            val analysis = analysisConstructor()
-            proceedAnalysis { includeAnalysis(analysis) }
+    fun forEachRoutineIn(program: Syntax.Program, action: ForEachRoutine.() -> Unit) {
+        for (routine in program.routines) {
+            includeAnalysis(ForEachRoutine(this, routine, action))
         }
+    }
+
+    class ForEachRoutine(
+        private val parent: Analysis<*>,
+        val routine: Syntax.RoutineDefinition,
+        private val implementation: ForEachRoutine.() -> Unit
+    ) : Analysis<Unit>() {
+        override val isDebugEnabled: Boolean
+            get() = parent.isDebugEnabled
+
+        override fun runAnalysis() =
+            implementation()
     }
 
     companion object {

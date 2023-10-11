@@ -81,10 +81,17 @@ class InputAnalysis(val source: InputSource) : Analysis<Syntax.Program>() {
                 }
                 parseResult.value as Syntax.Program
             } catch (exception: Exception) {
+                if (!isCupException(exception)) {
+                    throw exception
+                }
                 reportError(UNRECOVERABLE_SYNTAX_ERRORS)
                 Syntax.Program(emptyList())
             }
         }
+
+    private fun isCupException(exception: Exception) =
+        // Cup directly throws Error upon syntax errors, but no subclass of it.
+        exception.javaClass == java.lang.Exception::class.java
 
     inner class ErrorMessageProducingReporter : SyntaxErrorReporter {
         override fun reportSyntaxError(token: Token, expectedTokenIds: List<Int>) {

@@ -31,8 +31,8 @@ abstract class Analysis<T> {
 
     private val _reportedErrors: MutableList<Message> = mutableListOf()
 
-    val reportedErrors: List<Message>
-        get() = _reportedErrors
+    val reportedErrors: List<Message> =
+        _reportedErrors
 
     val hasReportedErrors: Boolean
         get() = _reportedErrors.isNotEmpty()
@@ -48,8 +48,8 @@ abstract class Analysis<T> {
     }
 
 
-    open val isDebugEnabled: Boolean
-        get() = this::class.simpleName in Main.analysisOptions.debugEnabledPasses
+    open val isDebugEnabled: Boolean =
+        this::class.simpleName in Main.analysisOptions.debugEnabledPasses
 
     protected inline fun debug(message: () -> String) {
         if (isDebugEnabled)

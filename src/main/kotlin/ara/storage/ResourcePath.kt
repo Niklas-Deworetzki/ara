@@ -26,6 +26,9 @@ private constructor(private val path: List<String>) {
         return path.joinToString(separator = ".")
     }
 
+    fun withAccessedMember(member: Syntax.Identifier): ResourcePath =
+        ResourcePath(this.path + member.name)
+
     companion object {
         fun of(segments: Iterable<String>): ResourcePath =
             ResourcePath(segments.toList())

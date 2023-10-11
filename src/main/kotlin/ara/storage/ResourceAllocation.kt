@@ -4,33 +4,17 @@ import ara.syntax.Syntax
 
 object ResourceAllocation {
 
-    fun Syntax.Storage.asResourcePath(): ResourcePath {
-        val segments = ArrayDeque<String>()
-        var storage = this
+    fun Syntax.Storage.asResourcePath(): ResourcePath = when (this) {
+        is Syntax.NamedStorage ->
+            ResourcePath.ofIdentifier(this.name)
 
-        while (true) {
-            when (storage) {
-                is Syntax.NamedStorage -> {
-                    segments.addFirst(storage.name.name)
-                    return ResourcePath.of(segments)
-                }
+        is Syntax.MemberAccess ->
+            this.storage.asResourcePath().withAccessedMember(this.member)
 
-                is Syntax.MemberAccess -> {
-                    segments.addFirst(storage.member.name)
-                    storage = storage.storage
-                }
-
-                is Syntax.DereferencedStorage -> {
-                    segments.clear()
-                    storage = storage.storage
-                }
-
-                is Syntax.TypedStorage -> {
-                    storage = storage.storage
-                }
-            }
-        }
+        is Syntax.TypedStorage ->
+            this.storage.asResourcePath()
     }
+
 
     fun Syntax.ResourceExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {
         is Syntax.Storage ->
@@ -39,11 +23,11 @@ object ResourceAllocation {
         is Syntax.AllocationExpression ->
             this.value.asResourcePaths()
 
-        is Syntax.IntegerLiteral ->
-            emptyList()
-
         is Syntax.StructureLiteral ->
             this.members.flatMap { it.value.asResourcePaths() }
+
+        is Syntax.IntegerLiteral, is Syntax.Memory ->
+            emptyList()
     }
 
     fun Syntax.Instruction.variablesCreated(): Collection<ResourcePath> =
@@ -80,6 +64,9 @@ object ResourceAllocation {
             emptyList()
     }
 
+    fun Syntax.Instruction.resources(): Collection<Syntax.ResourceExpression> =
+        resourcesCreated() + resourcesDestroyed()
+
     fun Syntax.ArithmeticExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {
         is Syntax.ArithmeticBinary ->
             this.lhs.asResourcePaths() + this.rhs.asResourcePaths()
@@ -91,5 +78,16 @@ object ResourceAllocation {
     fun Syntax.ConditionalExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {
         is Syntax.ComparativeBinary ->
             this.lhs.asResourcePaths() + this.rhs.asResourcePaths()
+    }
+
+    fun Syntax.Memory.asMemoryPath(): MemoryPath = when (this) {
+        is Syntax.DereferencedStorage ->
+            MemoryPath.ofDereferencedResource(this.storage.asResourcePath())
+
+        is Syntax.DereferencedMemory ->
+            this.asMemoryPath().withDereference()
+
+        is Syntax.MemoryMemberAccess ->
+            this.memory.asMemoryPath().withAccessedMember(this.member)
     }
 }

@@ -13,7 +13,7 @@ sealed interface MarkableMemory {
 
     class Structure(type: Type.Structure) : MarkableMemory {
         private val members = type.members.associate {
-            it.name to forType(it.type, true)
+            it.name to unmarkedForType(it.type)
         }
 
         override var isMarked: Boolean
@@ -57,7 +57,7 @@ sealed interface MarkableMemory {
         override fun access(segment: MemoryPath.Segment): MarkableMemory {
             require(segment is MemoryPath.Dereference) { "Reference can only be accessed via dereference operation." }
             if (referenced == null) {
-                referenced = forType(type, false)
+                referenced = unmarkedForType(type)
             }
             return referenced!!
         }
@@ -103,12 +103,8 @@ sealed interface MarkableMemory {
             is Type.Structure -> Structure(type)
         }
 
-        fun forType(type: Type, isInitialized: Boolean = true): MarkableMemory {
-            val memory = type.applyOnMaterialized(Leaf(), ::forMaterializedType)
-            memory.isMarked = isInitialized
-            return memory
-        }
-
+        fun unmarkedForType(type: Type): MarkableMemory =
+            type.applyOnMaterialized(Leaf(), ::forMaterializedType)
 
         fun subtract(
             root: ResourcePath,

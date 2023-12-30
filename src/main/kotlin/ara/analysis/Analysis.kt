@@ -20,7 +20,7 @@ abstract class Analysis<T> {
         proceedAnalysis { includeAnalysis(analysis) }
     }
 
-    protected fun <R> includeAnalysis(analysis: Analysis<R>): R {
+    fun <R> includeAnalysis(analysis: Analysis<R>): R {
         val result = analysis.runAnalysis()
         if (analysis.hasReportedErrors) {
             analysis.reportedErrors.forEach(::reportError)

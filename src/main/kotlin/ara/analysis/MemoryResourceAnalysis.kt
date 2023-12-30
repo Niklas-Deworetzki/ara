@@ -13,7 +13,7 @@ class MemoryResourceAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
 
     override fun runAnalysis() = forEachRoutineIn(program) {
         for (instruction in routine.body) {
-            verifyInstructionKeepsMemoryValid(program.environment, instruction)
+            verifyInstructionKeepsMemoryValid(routine.localEnvironment, instruction)
         }
     }
 
@@ -30,12 +30,14 @@ class MemoryResourceAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
         reportIfNotEmpty(
             destroyedAndNotCreated,
             instruction,
-            "Memory resources must be created after they are destroyed. The following resources were not created:"
+            "Memory resources must be created after they are destroyed.",
+            "The following resources were not created:"
         )
         reportIfNotEmpty(
             createdAndNotDestroyed,
             instruction,
-            "Memory resources must be destroyed before they can be created. The following resources were not destroyed:"
+            "Memory resources must be destroyed before they can be created.",
+            "The following resources were not destroyed:"
         )
     }
 
@@ -61,11 +63,13 @@ class MemoryResourceAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
     private fun reportIfNotEmpty(
         resources: Collection<MemoryPath>,
         instruction: Syntax.Instruction,
-        errorText: String
+        errorHeading: String,
+        resourceListHeading: String
     ) {
         if (resources.isNotEmpty()) {
-            val message = reportError(errorText)
+            val message = reportError(errorHeading)
                 .withPositionOf(instruction)
+                .withAdditionalInfo(resourceListHeading)
             for (resource in resources) {
                 message.withAdditionalInfo("- $resource")
             }

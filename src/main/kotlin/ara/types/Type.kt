@@ -85,7 +85,7 @@ sealed class Type {
                     f(type)
 
                 is ResolvedName ->
-                    applyOnMaterialized(type, notInitialized, f)
+                    applyOnMaterialized(type.type, notInitialized, f)
 
                 is Variable ->
                     if (type.type == null) notInitialized

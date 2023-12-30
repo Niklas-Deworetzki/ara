@@ -49,7 +49,7 @@ class MarkableMemoryDescriptor(environment: Environment) :
         DescriptorConstructionAlgebra<MarkableMemory?>() {
 
         override fun createForMaterializedType(type: Type.MaterializedType): MarkableMemory? = when (type) {
-            is Type.Reference -> MarkableMemory.forType(type.base)
+            is Type.Reference -> MarkableMemory.unmarkedForType(type.base)
             else -> null
         }
 

@@ -1,0 +1,7 @@
+# Error: Variable cannot be used in memory expression and be target of same assignment.
+
+type Pair = { x: Int, y: Int }
+
+routine use_created_2( -> pair: &Pair) {
+    (pair&.x, pair) := (pair&.x, &({ x = 0, y = 0 }))
+}

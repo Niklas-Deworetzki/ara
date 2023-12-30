@@ -7,24 +7,24 @@ type Foo = {
 }
 
 routine main(x: Int -> x, o: Foo) {
-    x == 0 -> L, R
+    -> L, R (x == 0)
 
-    L <-
+    <- L
     o.x := 0
     -> A
 
-    R <-
+    <- R
     o.y := 0
     -> B
 
-    A, B <- x == 0
+    <- A, B (x == 0)
     o.x := o.x + 1
     -> E
 
-    E <-
+    <- E
     o.x := o.x + 1
     -> F
 
-    F <-
+    <- F
     o.x := o.x + 1
 }

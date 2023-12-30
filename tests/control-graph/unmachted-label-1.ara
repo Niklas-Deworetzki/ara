@@ -2,6 +2,6 @@
 # Label `B' has no associated entry point.
 
 routine foo () -> () {
-    (0 > 1) -> A, B
-    A <-
+    -> A, B (0 > 1)
+    <- A
 }

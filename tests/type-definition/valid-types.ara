@@ -1,0 +1,6 @@
+
+type List = { head: Int, tail: &List }
+
+type A = { a : &A }
+
+routine main() -> () {}

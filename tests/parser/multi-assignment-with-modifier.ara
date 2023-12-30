@@ -1,0 +1,21 @@
+# Error: Custom error messages for multi-assignments with arithmetic modifier.
+# Arithmetic modifiers are only allowed with individual assignments.
+# Arithmetic modifiers are only allowed with individual assignments.
+# Arithmetic modifiers are only allowed with individual assignments.
+# Arithmetic modifiers are only allowed with individual assignments.
+
+routine a(x: Int, y: Int -> x, y) {
+    x, y := y, x + 4
+}
+
+routine b(x: Int, y: Int -> x, y) {
+    (x, y) := y, x + 4
+}
+
+routine a(x: Int, y: Int -> x, y) {
+    x, y := (y, x) + 4
+}
+
+routine b(x: Int, y: Int -> x, y) {
+    (x, y) := (y, x) + 4
+}

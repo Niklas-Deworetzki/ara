@@ -1,0 +1,7 @@
+
+
+type Pair = { x: Int, y: Int }
+
+routine swap(pair: &Pair -> pair) {
+    (pair&.x, pair&.y) := (pair&.y, pair&.x)
+}

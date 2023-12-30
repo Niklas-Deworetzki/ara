@@ -1,0 +1,7 @@
+
+
+type Pair = { x: Int, y: Int }
+
+routine new(x: Int, y: Int -> pair: &Pair) {
+    pair := &({ x = x, y = y })
+}

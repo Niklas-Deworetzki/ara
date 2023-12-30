@@ -3,7 +3,7 @@
 
 routine foo (a: Int) -> () {
     -> L
-    L <-
-    M <-
+    <- L
+    <- M
 }
 

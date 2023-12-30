@@ -1,0 +1,6 @@
+# Error: A variable name may appear at most once per parameter list.
+# Memory resources must be created after they are destroyed.
+
+routine g(n: {value: &Int} -> n) {
+    0 := n.value&
+}

@@ -1,5 +1,6 @@
 package ara.analysis.live
 
+import ara.Direction
 import ara.analysis.Analysis
 import ara.position.Range
 import ara.storage.ResourcePath
@@ -69,13 +70,7 @@ class RoutineLevelResourceAnalysis(val routine: Syntax.RoutineDefinition) : Anal
     }
 
     private companion object {
-        private fun liveFromInputParameters(routine: Syntax.RoutineDefinition): LivenessDescriptor {
-            val finalized = LivenessState.Finalized(emptySet())
-            val live = LivenessDescriptor(routine, finalized)
-            for (parameter in routine.inputParameters) {
-                live += ResourcePath.ofIdentifier(parameter.name) to parameter.range
-            }
-            return live
-        }
+        private fun liveFromInputParameters(routine: Syntax.RoutineDefinition): LivenessDescriptor =
+            LivenessDescriptor.fromParameterList(routine, Direction.FORWARD)
     }
 }

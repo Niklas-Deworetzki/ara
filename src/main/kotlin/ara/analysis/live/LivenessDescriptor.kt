@@ -1,5 +1,6 @@
 package ara.analysis.live
 
+import ara.Direction
 import ara.analysis.live.LivenessState.*
 import ara.position.Range
 import ara.storage.ResourcePath
@@ -127,5 +128,16 @@ class LivenessDescriptor : StorageDescriptor.WithGetSet<LivenessState, LivenessS
                 Unknown ->
                     this
             }
+    }
+
+    companion object {
+        fun fromParameterList(routine: Syntax.RoutineDefinition, direction: Direction): LivenessDescriptor {
+            val live = LivenessDescriptor(routine, defaultState = Finalized(emptySet()))
+            val parameters = direction.choose(routine.inputParameters, routine.outputParameters)
+            for (parameter in parameters) {
+                live += ResourcePath.ofIdentifier(parameter.name) to parameter.range
+            }
+            return live
+        }
     }
 }

@@ -1,7 +1,6 @@
 package ara.analysis.live
 
 import ara.Direction
-import ara.analysis.LivenessAnalysis.Companion.liveFromParameterList
 import ara.analysis.dataflow.DataflowProblem
 import ara.analysis.live.LivenessState.Companion.meet
 import ara.control.Block
@@ -19,13 +18,13 @@ class LivenessProblem(val routine: Syntax.RoutineDefinition, direction: Directio
 
     override fun initialInValue(node: Block): LivenessDescriptor =
         if (direction == Direction.FORWARD && node == routine.graph.beginBlock)
-            routine.liveFromParameterList(routine.inputParameters)
+            LivenessDescriptor.fromParameterList(routine, Direction.FORWARD)
         else
             LivenessDescriptor(routine, LivenessState.Unknown)
 
     override fun initialOutValue(node: Block): LivenessDescriptor =
         if (direction == Direction.BACKWARD && node == routine.graph.endBlock)
-            routine.liveFromParameterList(routine.outputParameters)
+            LivenessDescriptor.fromParameterList(routine, Direction.BACKWARD)
         else
             LivenessDescriptor(routine, LivenessState.Unknown)
 

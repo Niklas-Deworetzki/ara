@@ -28,10 +28,21 @@ private <S extends Syntax> S withRange(S syntax, int left, int right) {
     return syntax;
 }
 
+private Instruction newArithmeticAssignmentIfValid(
+    List<ResourceExpression> dsts, List<ResourceExpression> srcs, ArithmeticModifier mod,
+    int left, int right
+) {
+    if (dsts.size() != 1 || srcs.size() != 1) {
+        reporter.reportCustomError("Arithmetic modifiers are only allowed with individual assignments.", new Range(source, left, right));
+        return withRange(new MultiAssignment(dsts, srcs), left, right);
+    }
+    return withRange(new ArithmeticAssignment(dsts.get(0), srcs.get(0), mod), left, right);
+}
+
 @Override
 public void syntax_error(Symbol currentToken) {
     expected_token_ids(); // First call sometimes returns invalid results.
-    reporter.reportSyntaxError((Token) currentToken, expected_token_ids());
+    reporter.reportWrongToken((Token) currentToken, expected_token_ids());
 }
 
 @Override
@@ -46,7 +57,8 @@ terminal String     HASHCOMMENT, UNKNOWN;
 
 terminal    ROUTINE, TYPE;
 terminal    CALL, UNCALL;
-terminal    COLON, DOT, SEMIC, COMMA, EQ, AMPERSAND;
+terminal    COLON, DOT, COMMA, EQ, AMPERSAND;
+terminal    AMPERSAND_PAREN_L;
 terminal    ASSIGNMENT;
 
 terminal    OPERATOR_ADD, OPERATOR_SUB, OPERATOR_XOR, OPERATOR_MUL, OPERATOR_DIV, OPERATOR_MOD;
@@ -63,8 +75,8 @@ non terminal Definition                 Definition, TypeDefinition, RoutineDefin
 non terminal List<Parameter>            ParameterList, ParameterListTail;
 non terminal Parameter                  Parameter;
 non terminal List<Instruction>          Body, InstructionList;
-non terminal Instruction                Instruction, ArithmeticAssignment, MultiAssignment, Unconditional, Conditional, Call;
-non terminal List<ResourceExpression>   ArgumentList, ArgumentListTail;
+non terminal Instruction                Instruction, Assignment, Control, Call;
+non terminal List<ResourceExpression>   ArgumentList, ArgumentListTail, ResourceList;
 non terminal ResourceExpression         ResourceExpression, IntegerLiteral, StructureLiteral, AllocationExpression;
 non terminal List<StructureLiteral.Member> StructureLiteralMembersList, StructureLiteralMemberListTail;
 non terminal StructureLiteral.Member    StructureLiteralMember;
@@ -126,7 +138,7 @@ TypeDefinition ::= TYPE:l Identifier:name EQ Type:type
 
 RoutineDefinition ::= ROUTINE:anchor Identifier:name PAREN_L ParameterList:in ARROW_R ParameterList:out PAREN_R Body:body
                        {: RESULT = withRange(new RoutineDefinition(name, in, out, body), anchorleft, bodyright); :}
-                    | ROUTINE:anchor Identifier:name PAREN_L ParameterList:in PAREN_R ARROW_R PAREN_L ParameterList:out Body:body
+                    | ROUTINE:anchor Identifier:name PAREN_L ParameterList:in PAREN_R ARROW_R PAREN_L ParameterList:out PAREN_R Body:body
                        {: RESULT = withRange(new RoutineDefinition(name, in, out, body), anchorleft, bodyright); :}
                     ;
 
@@ -160,45 +172,49 @@ Parameter ::= Identifier:name
 //
 //
 
-InstructionList ::= Instruction:head SEMIC InstructionList:tail
+InstructionList ::= Instruction:head  InstructionList:tail
                      {: RESULT = cons(head, tail); :}
                   | Epsilon
                      {: RESULT = nil(); :}
                   ;
 
-Instruction ::= ArithmeticAssignment:result
+Instruction ::= Assignment:result
                  {: RESULT = result; :}
-              | MultiAssignment:result
-                 {: RESULT = result; :}
-              | Unconditional:result
-                 {: RESULT = result; :}
-              | Conditional:result
+              | Control:result
                  {: RESULT = result; :}
               | Call:result
                  {: RESULT = result; :}
               ;
 
-ArithmeticAssignment ::= ResourceExpression:dst ASSIGNMENT ResourceExpression:src
-                          {: RESULT = withRange(new MultiAssignment(cons(dst, nil()), cons(src, nil())), dstleft, srcright); :}
-                       | ResourceExpression:dst ASSIGNMENT ResourceExpression:src ArithmeticModifier:mod
-                          {: RESULT = withRange(new ArithmeticAssignment(dst, src, mod), dstleft, modright); :}
-                       ;
+Assignment ::= ArgumentList:dst ASSIGNMENT ArgumentList:src
+                {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
+             | ArgumentList:dst ASSIGNMENT ResourceList:src
+                {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
+             | ResourceList:dst ASSIGNMENT ArgumentList:src
+                {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
+             | ResourceList:dst ASSIGNMENT ResourceList:src
+                {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
 
-MultiAssignment ::= ArgumentList:dst ASSIGNMENT ArgumentList:src
-                     {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
-                  ;
+             | ArgumentList:dst ASSIGNMENT ArgumentList:src ArithmeticModifier:mod
+                {: RESULT = newArithmeticAssignmentIfValid(dst, src, mod, dstleft, srcright); :}
+             | ArgumentList:dst ASSIGNMENT ResourceList:src ArithmeticModifier:mod
+                {: RESULT = newArithmeticAssignmentIfValid(dst, src, mod, dstleft, srcright); :}
+             | ResourceList:dst ASSIGNMENT ArgumentList:src ArithmeticModifier:mod
+                {: RESULT = newArithmeticAssignmentIfValid(dst, src, mod, dstleft, srcright); :}
+             | ResourceList:dst ASSIGNMENT ResourceList:src ArithmeticModifier:mod
+                {: RESULT = newArithmeticAssignmentIfValid(dst, src, mod, dstleft, srcright); :}
+             ;
 
-Unconditional ::= ARROW_R:arrow Identifier:label
-                   {: RESULT = withRange(new Unconditional(Direction.FORWARD, label), arrowleft, labelright); :}
-                | Identifier:label ARROW_L:arrow
-                   {: RESULT = withRange(new Unconditional(Direction.BACKWARD, label), labelleft, arrowright); :}
-                ;
 
-Conditional ::= ConditionalExpression:condition ARROW_R Identifier:ltarget COMMA Identifier:rtarget
-                 {: RESULT = withRange(new Conditional(Direction.FORWARD, ltarget, rtarget, condition), conditionleft, rtargetright); :}
-              | Identifier:ltarget COMMA Identifier:rtarget ARROW_L ConditionalExpression:condition
-                 {: RESULT = withRange(new Conditional(Direction.BACKWARD, ltarget, rtarget, condition), ltargetleft, conditionright); :}
-              ;
+Control ::= ARROW_R:arrow Identifier:label
+             {: RESULT = withRange(new Unconditional(Direction.FORWARD, label), arrowleft, labelright); :}
+          | ARROW_L:arrow Identifier:label
+             {: RESULT = withRange(new Unconditional(Direction.BACKWARD, label), arrowleft, labelright); :}
+          | ARROW_R:arrow Identifier:ltarget COMMA Identifier:rtarget ConditionalExpression:condition
+             {: RESULT = withRange(new Conditional(Direction.FORWARD, ltarget, rtarget, condition), arrowleft, conditionright); :}
+          | ARROW_L:arrow Identifier:ltarget COMMA Identifier:rtarget ConditionalExpression:condition
+             {: RESULT = withRange(new Conditional(Direction.BACKWARD, ltarget, rtarget, condition), arrowleft, conditionright); :}
+          ;
 
 Call ::= ArgumentList:lhs ASSIGNMENT CALL Identifier:routine ArgumentList:rhs
           {: RESULT = withRange(new Call(lhs, rhs, Direction.FORWARD, routine), lhsleft, rhsright); :}
@@ -220,6 +236,10 @@ ArgumentList ::= PAREN_L ResourceExpression:head ArgumentListTail:tail PAREN_R
                   {: RESULT = cons(head, tail); :}
                | PAREN_L PAREN_R
                   {: RESULT = nil(); :}
+               ;
+
+ResourceList ::= ResourceExpression:head ArgumentListTail:tail
+                  {: RESULT = cons(head, tail); :}
                ;
 
 ResourceExpression ::= IntegerLiteral:result
@@ -258,8 +278,8 @@ IntegerLiteral ::= INTEGER:value
                     {: RESULT = withRange(new IntegerLiteral(value), valueleft, valueright); :}
                  ;
 
-AllocationExpression ::= AMPERSAND:anchor ResourceExpression:expression
-                          {: RESULT = withRange(new AllocationExpression(expression), anchorleft, anchorright); :}
+AllocationExpression ::= AMPERSAND_PAREN_L:l ResourceExpression:expression PAREN_R:r
+                          {: RESULT = withRange(new AllocationExpression(expression), lleft, rright); :}
                        ;
 
 Storage ::= BaseStorage:base StorageSuffixes:suffixes
@@ -340,6 +360,8 @@ ArithmeticBinary ::= PAREN_L:l ResourceExpression:lhs BinaryOperator:op Resource
 
 ArithmeticValue ::= ResourceExpression:value
                      {: RESULT = withRange(new ArithmeticValue(value), valueleft, valueright); :}
+                  | PAREN_L:l ResourceExpression:value PAREN_R:r
+                     {: RESULT = withRange(new ArithmeticValue(value), lleft, rright); :}
                   ;
 
 ConditionalExpression ::= ComparativeBinary:binary
@@ -348,8 +370,6 @@ ConditionalExpression ::= ComparativeBinary:binary
 
 ComparativeBinary ::= PAREN_L:l ResourceExpression:lhs ComparisonOperator:op ResourceExpression:rhs PAREN_R:r
                        {: RESULT = withRange(new ComparativeBinary(lhs, op, rhs), lleft, rright); :}
-                    | ResourceExpression:lhs ComparisonOperator:op ResourceExpression:rhs
-                       {: RESULT = withRange(new ComparativeBinary(lhs, op, rhs), lhsleft, rhsright); :}
                     ;
 
 //

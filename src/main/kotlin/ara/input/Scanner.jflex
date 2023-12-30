@@ -64,11 +64,11 @@ Decimal     = [0-9]+
 
 ":"         { return token(COLON); }
 ","         { return token(COMMA); }
-";"         { return token(SEMIC); }
 "."         { return token(DOT); }
 "="         { return token(EQ); }
 ":="        { return token(ASSIGNMENT); }
 "&"         { return token(AMPERSAND); }
+"&("        { return token(AMPERSAND_PAREN_L); }
 
 "+"         { return token(OPERATOR_ADD); }
 "-"         { return token(OPERATOR_SUB); }

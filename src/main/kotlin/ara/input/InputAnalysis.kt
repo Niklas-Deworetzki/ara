@@ -50,7 +50,6 @@ class InputAnalysis(val source: InputSource) : Analysis<Syntax.Program>() {
             setOf(Sym.ASSIGNMENT) to "assignment operator " + ":=".quoted(),
             setOf(Sym.ARROW_L) to "left arrow " + "<-".quoted(),
             setOf(Sym.ARROW_R) to "right arrow " + "->".quoted(),
-            setOf(Sym.SEMIC) to "a semicolon",
             setOf(Sym.CURL_L) to "{",
             setOf(Sym.CURL_R) to "}",
             setOf(Sym.PAREN_L) to "(",
@@ -97,7 +96,12 @@ class InputAnalysis(val source: InputSource) : Analysis<Syntax.Program>() {
         exception.javaClass == java.lang.Exception::class.java
 
     inner class ErrorMessageProducingReporter : SyntaxErrorReporter {
-        override fun reportSyntaxError(token: Token, expectedTokenIds: List<Int>) {
+        override fun reportCustomError(message: String, range: Range) {
+            val error = syntaxError(message)
+            reportError(error.withPosition(range))
+        }
+
+        override fun reportWrongToken(token: Token, expectedTokenIds: List<Int>) {
             val range = Range(source, token.left.toLong(), token.right.toLong())
             val message = generateErrorMessage(token, expectedTokenIds)
             reportError(message.withPosition(range))

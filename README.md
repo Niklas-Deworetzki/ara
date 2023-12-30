@@ -85,11 +85,11 @@ routine loop(iterations: Int) -> (iterations: Int) {
     n := 0
     -> Enter
     
-    Enter, Loop <- n == 0
+    <- Enter, Loop (n == 0)
     n := n + 1
-    n == iterations -> Exit, Loop
+    -> Exit, Loop (n == iterations)
     
-    Exit <-
+    <- Exit
     0 := n - iterations
 }
 ```

@@ -55,6 +55,21 @@ class IntegrationTests {
             }
 
             is NegativeTest -> {
+                if (!analysis.hasReportedErrors) {
+                    throw TestFailure(
+                        specification,
+                        "Analysis should report some errors but none were found.",
+                        missingErrors = specification.errors
+                    )
+                }
+                if (specification.errors.isEmpty()) {
+                    throw TestFailure(
+                        specification,
+                        "No errors were specified for this test case.",
+                        missingErrors = analysis.reportedErrors.map { it.message }
+                    )
+                }
+
                 val missingErrors = specification.errors
                     .filterNot { error -> analysis.reportedErrors.any { it.message == error } }
 

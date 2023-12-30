@@ -1,7 +1,10 @@
 package ara.input
 
 import ara.input.symbol.Token
+import ara.position.Range
 
-fun interface SyntaxErrorReporter {
-    fun reportSyntaxError(token: Token, expectedTokenIds: List<Int>)
+interface SyntaxErrorReporter {
+    fun reportWrongToken(token: Token, expectedTokenIds: List<Int>)
+
+    fun reportCustomError(message: String, range: Range)
 }

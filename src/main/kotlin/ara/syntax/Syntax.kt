@@ -76,7 +76,9 @@ sealed class Syntax {
     /**
      * An assignment exchanging multiple values, written as
      * ```
+     * () := ()
      * (dst1, dst2, ..., dstN) := (src1, src2, ..., srcN)
+     * dst1, dst2, ..., dstN := src1, src2, ..., srcN
      * ```
      */
     data class MultiAssignment(

@@ -33,8 +33,11 @@ sealed interface MarkableMemory {
             return members[segment.name]!!
         }
 
-        internal fun subtractMarked(current: MemoryPath, other: Structure): Collection<MemoryPath> =
-            members.flatMap { (key, thisValue) ->
+        internal fun subtractMarked(current: MemoryPath, other: Structure): Collection<MemoryPath> {
+            if (!other.isMarked && this.members.values.all { it.isMarked }) {
+                return setOf(current) // Return root of struct as difference instead of all members.
+            }
+            return members.flatMap { (key, thisValue) ->
                 val otherValue = other.members[key]!!
                 subtract(
                     current.withAccessedMember(key),
@@ -42,6 +45,7 @@ sealed interface MarkableMemory {
                     otherValue
                 )
             }
+        }
     }
 
     class Reference(private val type: Type.Reference) : MarkableMemory {

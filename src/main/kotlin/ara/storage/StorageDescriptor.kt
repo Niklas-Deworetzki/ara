@@ -67,7 +67,7 @@ protected constructor(val root: InnerNode<V>) {
     /**
      * Translate [ResourcePath] to [DescriptorNode] in this [StorageDescriptor].
      */
-    private fun findNode(path: ResourcePath): DescriptorNode<V> {
+    protected fun findNode(path: ResourcePath): DescriptorNode<V> {
         var currentNode: DescriptorNode<V> = root
         for (index in path.indices) {
             when (currentNode) {
@@ -82,22 +82,23 @@ protected constructor(val root: InnerNode<V>) {
         return currentNode
     }
 
-    operator fun set(path: ResourcePath, value: V): Unit =
-        setNodeValue(findNode(path), value)
-
-    operator fun get(path: ResourcePath): V =
-        getNodeValue(findNode(path))
-
-    protected abstract fun setNodeValue(node: DescriptorNode<V>, value: V)
-    protected abstract fun getNodeValue(node: DescriptorNode<V>): V
-
-
     override fun equals(other: Any?): Boolean {
         return other is StorageDescriptor<*> && this.root == other.root
     }
 
     override fun hashCode(): Int {
         return root.hashCode()
+    }
+
+    abstract class WithGetSet<N, S>(root: InnerNode<N>) : StorageDescriptor<N>(root) {
+        operator fun set(path: ResourcePath, value: S): Unit =
+            setNodeValue(findNode(path), value)
+
+        operator fun get(path: ResourcePath): S =
+            getNodeValue(findNode(path))
+
+        protected abstract fun setNodeValue(node: DescriptorNode<N>, value: S)
+        protected abstract fun getNodeValue(node: DescriptorNode<N>): S
     }
 
 
@@ -134,36 +135,55 @@ protected constructor(val root: InnerNode<V>) {
             return result
         }
 
-        fun <V> fromEnvironment(environment: Environment, defaultValue: V): InnerNode<V> {
-            val algebra = DescriptorConstructionAlgebra(defaultValue)
+        fun <V> fromEnvironment(environment: Environment, defaultValue: V): InnerNode<V> =
+            fromEnvironment(environment, DefaultValueDescriptorConstructionAlgebra(defaultValue))
 
+        @JvmStatic
+        fun <V> fromEnvironment(
+            environment: Environment,
+            constructor: (Type) -> DescriptorNode<V>
+        ): InnerNode<V> {
             val orderedVariables = environment.variables.sortedBy { it.key }
             val descriptors = orderedVariables.map { (variable, type) ->
-                Entry(variable.name, algebra.evaluate(type))
+                Entry(variable.name, constructor(type))
             }
             return InnerNode(descriptors.toList())
         }
+    }
 
-        /**
-         * Algebra used to initialize [StorageDescriptor] with default value in all nodes.
-         */
-        private class DescriptorConstructionAlgebra<V>(val defaultValue: V) :
-            Type.Algebra<DescriptorNode<V>> {
+    /**
+     * Algebra used to initialize [StorageDescriptor] with default value in all nodes.
+     */
+    private class DefaultValueDescriptorConstructionAlgebra<V>(val defaultValue: V) :
+        DescriptorConstructionAlgebra<V>() {
 
-            override fun builtin(builtin: Type.Builtin): DescriptorNode<V> =
-                LeafNode(defaultValue)
+        override fun createForMaterializedType(type: Type.MaterializedType): V =
+            defaultValue
 
-            override fun reference(base: Type): DescriptorNode<V> =
-                LeafNode(defaultValue)
+        override fun createForUninitializedType(): V =
+            defaultValue
+    }
 
-            override fun uninitializedVariable(): DescriptorNode<V> =
-                LeafNode(defaultValue)
+    abstract class DescriptorConstructionAlgebra<V> :
+        Type.Algebra<DescriptorNode<V>> {
 
-            override fun structure(
-                memberNames: NonEmptyList<String>,
-                memberValues: NonEmptyList<DescriptorNode<V>>
-            ): DescriptorNode<V> =
-                InnerNode(zip(memberNames, memberValues, ::Entry))
-        }
+        abstract fun createForMaterializedType(type: Type.MaterializedType): V
+
+        abstract fun createForUninitializedType(): V
+
+        override fun uninitializedVariable(): DescriptorNode<V> =
+            LeafNode(createForUninitializedType())
+
+        override fun builtin(builtin: Type.Builtin): DescriptorNode<V> =
+            LeafNode(createForMaterializedType(builtin))
+
+        override fun reference(base: Type): DescriptorNode<V> =
+            LeafNode(createForMaterializedType(Type.Reference(base)))
+
+        override fun structure(
+            memberNames: NonEmptyList<String>,
+            memberValues: NonEmptyList<DescriptorNode<V>>
+        ): DescriptorNode<V> =
+            InnerNode(zip(memberNames, memberValues, ::Entry))
     }
 }

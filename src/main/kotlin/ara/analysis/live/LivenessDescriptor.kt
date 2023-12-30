@@ -6,7 +6,7 @@ import ara.storage.ResourcePath
 import ara.storage.StorageDescriptor
 import ara.syntax.Syntax
 
-class LivenessDescriptor : StorageDescriptor<LivenessState> {
+class LivenessDescriptor : StorageDescriptor.WithGetSet<LivenessState, LivenessState> {
 
     constructor(routine: Syntax.RoutineDefinition, defaultState: LivenessState) :
             super(fromEnvironment(routine.localEnvironment, defaultState))

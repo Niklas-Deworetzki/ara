@@ -68,6 +68,7 @@ abstract class Analysis<T> {
             andThen { ParameterTypeAnalysis(program) }
             andThen { LocalTypeAnalysis(program) }
             andThen { LivenessAnalysis(program) }
+            andThen { MemoryResourceAnalysis(program) }
             return program
         }
     }

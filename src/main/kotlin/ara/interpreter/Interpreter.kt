@@ -237,9 +237,17 @@ class Interpreter(val program: Syntax.Program) : Runnable {
                 return Value.Structure(evaluatedMembers.toNonEmptyList())
             }
 
+            is Syntax.AllocationExpression ->
+                TODO("Evaluate member, allocate in memory, return pointer.")
+
             // Fetch resource from path.
             is Syntax.Storage ->
+                // FIXME: Requires recursive descend now to resolve dereferences.
                 return currentStackFrame[expression.asResourcePath()]
+
+            is Syntax.DereferencedMemory -> TODO()
+            is Syntax.DereferencedStorage -> TODO()
+            is Syntax.MemoryMemberAccess -> TODO()
         }
     }
 
@@ -265,9 +273,17 @@ class Interpreter(val program: Syntax.Program) : Runnable {
                 }
             }
 
+            is Syntax.AllocationExpression ->
+                TODO("Release reference, clear values from memory, finalize value with member")
+
             // Initialize resource described by path.
             is Syntax.Storage ->
+                // FIXME: Requires recursive descend now to resolve dereferences.
                 currentStackFrame[resource.asResourcePath()] = value
+
+            is Syntax.DereferencedMemory -> TODO()
+            is Syntax.DereferencedStorage -> TODO()
+            is Syntax.MemoryMemberAccess -> TODO()
         }
     }
 

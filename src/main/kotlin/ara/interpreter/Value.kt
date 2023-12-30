@@ -37,7 +37,7 @@ sealed interface Value {
             DefaultValueAlgebra.evaluate(type)
 
         private object DefaultValueAlgebra : Type.Algebra<Value> {
-            override fun builtin(builtin: Type.BuiltinType): Value = when (builtin) {
+            override fun builtin(builtin: Type.Builtin): Value = when (builtin) {
                 Type.Comparison -> throw NotImplementedError("Cannot store comparison results for now.")
                 Type.Integer -> ZERO
                 Type.Unit -> Unit
@@ -46,6 +46,10 @@ sealed interface Value {
             override fun structure(memberNames: NonEmptyList<String>, memberValues: NonEmptyList<Value>): Value {
                 val members = zip(memberNames, memberValues, ::Member)
                 return Structure(members.toNonEmptyList())
+            }
+
+            override fun reference(base: Type): Value {
+                TODO("Reference node.")
             }
 
             override fun uninitializedVariable(): Value =

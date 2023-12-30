@@ -9,7 +9,7 @@ import ara.utils.combineWith
 import java.util.*
 
 class StackFrame(val direction: Direction, val routine: Syntax.RoutineDefinition, val caller: Syntax.Call? = null) :
-    StorageDescriptor<Value>(fromEnvironment(routine.localEnvironment, Value.ZERO)) {
+    StorageDescriptor.WithGetSet<Value, Value>(fromEnvironment(routine.localEnvironment, Value.ZERO)) {
 
     val queuedInstructions: Queue<Syntax.Instruction> = ArrayDeque()
 

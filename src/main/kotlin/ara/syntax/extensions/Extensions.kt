@@ -24,3 +24,9 @@ fun Syntax.Control.isEntryPoint(): Boolean =
 
 fun Syntax.Control.isExitPoint(): Boolean =
     this.direction == Direction.FORWARD
+
+tailrec fun Syntax.Memory.getDereferencedStorage(): Syntax.Storage = when (this) {
+    is Syntax.DereferencedStorage -> this.storage
+    is Syntax.DereferencedMemory -> this.memory.getDereferencedStorage()
+    is Syntax.MemoryMemberAccess -> this.memory.getDereferencedStorage()
+}

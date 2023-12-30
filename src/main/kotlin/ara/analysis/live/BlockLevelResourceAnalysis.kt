@@ -3,11 +3,15 @@ package ara.analysis.live
 import ara.analysis.Analysis
 import ara.control.Block
 import ara.reporting.Message.Companion.quoted
+import ara.storage.ResourceAllocation.allMemoryReferences
+import ara.storage.ResourceAllocation.asResourcePath
 import ara.storage.ResourceAllocation.asResourcePaths
+import ara.storage.ResourceAllocation.resources
 import ara.storage.ResourceAllocation.resourcesCreated
 import ara.storage.ResourceAllocation.resourcesDestroyed
 import ara.storage.ResourcePath
 import ara.syntax.Syntax
+import ara.syntax.extensions.getDereferencedStorage
 
 class BlockLevelResourceAnalysis(routine: Syntax.RoutineDefinition, val block: Block): Analysis<Unit>() {
     private val currentState = routine.liveness.getIn(block).copy()
@@ -69,6 +73,12 @@ class BlockLevelResourceAnalysis(routine: Syntax.RoutineDefinition, val block: B
     }
 
     private fun verifyUses(instruction: Syntax.Instruction) {
+        val usedInMemoryReference = instruction.resources().flatMap { it.allMemoryReferences() }
+        for (memory in usedInMemoryReference) {
+            val storage = memory.getDereferencedStorage()
+            verifyUse(storage.asResourcePath(), storage)
+        }
+
         when (instruction) {
             is Syntax.ArithmeticAssignment -> {
                 val resources = instruction.arithmetic.value.asResourcePaths().toSet()

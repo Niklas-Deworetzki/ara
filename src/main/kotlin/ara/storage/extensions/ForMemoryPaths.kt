@@ -7,15 +7,15 @@ import ara.syntax.Syntax
 object ForMemoryPaths {
 
     @JvmStatic
-    fun asMemoryPaths(expression: Syntax.ResourceExpression): Collection<MemoryPath> = when (expression) {
+    fun allMemoryReferences(expression: Syntax.ResourceExpression): Collection<Syntax.Memory> = when (expression) {
         is Syntax.AllocationExpression ->
-            asMemoryPaths(expression.value)
+            allMemoryReferences(expression.value)
 
         is Syntax.Memory ->
-            listOf(asMemoryPath(expression))
+            listOf(expression)
 
         is Syntax.StructureLiteral ->
-            expression.members.flatMap { asMemoryPaths(it.value) }
+            expression.members.flatMap { allMemoryReferences(it.value) }
 
         is Syntax.IntegerLiteral,
         is Syntax.MemberAccess,
@@ -23,6 +23,10 @@ object ForMemoryPaths {
         is Syntax.TypedStorage ->
             emptyList()
     }
+
+    @JvmStatic
+    fun asMemoryPaths(expression: Syntax.ResourceExpression): Collection<MemoryPath> =
+        allMemoryReferences(expression).map { asMemoryPath(it) }
 
     @JvmStatic
     fun asMemoryPath(memory: Syntax.Memory): MemoryPath = when (memory) {

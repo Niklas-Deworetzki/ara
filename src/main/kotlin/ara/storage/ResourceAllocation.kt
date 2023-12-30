@@ -24,7 +24,6 @@ object ResourceAllocation {
         this.resourcesDestroyed().flatMap { it.asResourcePaths() }
 
 
-
     fun Syntax.Storage.asResourcePath(): ResourcePath =
         ForResourcePath.asResourcePath(this)
 
@@ -37,6 +36,9 @@ object ResourceAllocation {
     fun Syntax.ConditionalExpression.asResourcePaths(): Collection<ResourcePath> =
         ForResourcePath.asResourcePaths(this)
 
+
+    fun Syntax.ResourceExpression.allMemoryReferences(): Collection<Syntax.Memory> =
+        ForMemoryPaths.allMemoryReferences(this)
 
     fun Syntax.ResourceExpression.asMemoryPaths(): Collection<MemoryPath> =
         ForMemoryPaths.asMemoryPaths(this)

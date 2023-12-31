@@ -61,7 +61,7 @@ sealed interface MarkableMemory {
         override fun access(segment: MemoryPath.Segment): MarkableMemory {
             require(segment is MemoryPath.Dereference) { "Reference can only be accessed via dereference operation." }
             if (referenced == null) {
-                referenced = unmarkedForType(type)
+                referenced = unmarkedForType(type.base)
             }
             return referenced!!
         }

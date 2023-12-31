@@ -40,7 +40,6 @@ class MarkableMemoryDescriptor(environment: Environment) :
     private fun getAccessedMemory(memoryPath: MemoryPath): MarkableMemory {
         val node = findNode(memoryPath.resource)
         require(node is LeafNode) { "Memory access on structure is not possible." }
-
         val accessedMemory = requireNotNull(node.data) { "Memory access on non-reference value is not possible." }
         return memoryPath.path.fold(accessedMemory, MarkableMemory::access)
     }
@@ -49,7 +48,7 @@ class MarkableMemoryDescriptor(environment: Environment) :
         DescriptorConstructionAlgebra<MarkableMemory?>() {
 
         override fun createForMaterializedType(type: Type.MaterializedType): MarkableMemory? = when (type) {
-            is Type.Reference -> MarkableMemory.unmarkedForType(type.base)
+            is Type.Reference -> MarkableMemory.unmarkedForType(type)
             else -> null
         }
 

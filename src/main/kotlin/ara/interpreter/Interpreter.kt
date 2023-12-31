@@ -2,6 +2,9 @@ package ara.interpreter
 
 import ara.Direction
 import ara.control.Block
+import ara.reporting.Message.Companion.quoted
+import ara.storage.MemoryPath
+import ara.storage.ResourceAllocation.asMemoryPath
 import ara.storage.ResourceAllocation.asResourcePath
 import ara.storage.ResourcePath
 import ara.syntax.Syntax
@@ -10,11 +13,9 @@ import ara.utils.NonEmptyList
 import ara.utils.NonEmptyList.Companion.toNonEmptyList
 import ara.utils.combineWith
 import java.util.*
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 
 class Interpreter(val program: Syntax.Program) : Runnable {
+    private val heap: Heap = Heap()
     private val callStack: Deque<StackFrame> = ArrayDeque()
 
     private val currentStackFrame: StackFrame
@@ -237,17 +238,20 @@ class Interpreter(val program: Syntax.Program) : Runnable {
                 return Value.Structure(evaluatedMembers.toNonEmptyList())
             }
 
-            is Syntax.AllocationExpression ->
-                TODO("Evaluate member, allocate in memory, return pointer.")
-
             // Fetch resource from path.
             is Syntax.Storage ->
-                // FIXME: Requires recursive descend now to resolve dereferences.
                 return currentStackFrame[expression.asResourcePath()]
 
-            is Syntax.DereferencedMemory -> TODO()
-            is Syntax.DereferencedStorage -> TODO()
-            is Syntax.MemoryMemberAccess -> TODO()
+            // Allocate on heap.
+            is Syntax.AllocationExpression -> {
+                val allocated = evaluate(expression.value)
+                return Value.Reference(heap.allocate(allocated))
+            }
+
+            is Syntax.Memory -> {
+                val memoryPath = expression.asMemoryPath()
+                return getMemory(memoryPath.path, currentStackFrame[memoryPath.resource])
+            }
         }
     }
 
@@ -273,17 +277,20 @@ class Interpreter(val program: Syntax.Program) : Runnable {
                 }
             }
 
-            is Syntax.AllocationExpression ->
-                TODO("Release reference, clear values from memory, finalize value with member")
-
             // Initialize resource described by path.
             is Syntax.Storage ->
-                // FIXME: Requires recursive descend now to resolve dereferences.
                 currentStackFrame[resource.asResourcePath()] = value
 
-            is Syntax.DereferencedMemory -> TODO()
-            is Syntax.DereferencedStorage -> TODO()
-            is Syntax.MemoryMemberAccess -> TODO()
+            // Unpack reference by free-ing value from heap and initialize contents.
+            is Syntax.AllocationExpression -> {
+                val released = heap.free(value.asAddress())
+                initialize(resource.value, released)
+            }
+
+            is Syntax.Memory -> {
+                val memoryPath = resource.asMemoryPath()
+                updateMemory(memoryPath.path, currentStackFrame[memoryPath.resource], value)
+            }
         }
     }
 
@@ -292,23 +299,6 @@ class Interpreter(val program: Syntax.Program) : Runnable {
 
     companion object {
         val MAIN_ROUTINE_NAME = Syntax.Identifier("main")
-
-        private fun ensureReversibility(condition: Boolean, lazyMessage: () -> String) {
-            if (!condition) {
-                throw ReversibilityViolation(lazyMessage())
-            }
-        }
-
-        @OptIn(ExperimentalContracts::class)
-        private fun internalAssertion(condition: Boolean, lazyMessage: () -> String) {
-            contract {
-                returns() implies condition
-                callsInPlace(lazyMessage, InvocationKind.AT_MOST_ONCE)
-            }
-
-            if (!condition)
-                throw InternalInconsistencyException(lazyMessage())
-        }
 
         private fun Value.asInteger(): Int {
             internalAssertion(this is Value.Integer) {
@@ -324,6 +314,21 @@ class Interpreter(val program: Syntax.Program) : Runnable {
             return this.members
         }
 
+        private fun Value.accessMember(name: String): Value {
+            val accessedMember = this.asStructure().find { it.name == name }
+            internalAssertion(accessedMember != null) {
+                "Operation requires member named ${name.quoted()} on $this."
+            }
+            return accessedMember.value
+        }
+
+        private fun Value.asAddress(): Int {
+            internalAssertion(this is Value.Reference) {
+                "Operation requires a reference."
+            }
+            return this.address
+        }
+
         private operator fun Value.compareTo(other: Value): Int =
             this.asInteger() compareTo other.asInteger()
 
@@ -336,4 +341,38 @@ class Interpreter(val program: Syntax.Program) : Runnable {
             Syntax.ModificationOperator.XOR -> Syntax.ModificationOperator.XOR
         }
     }
+
+    private fun getMemory(path: List<MemoryPath.Segment>, value: Value): Value {
+        var result = value
+        for (segment in path) {
+            result = when (segment) {
+                MemoryPath.Dereference -> heap[result.asAddress()]
+                is MemoryPath.Member -> result.accessMember(segment.name)
+            }
+        }
+        return result
+    }
+
+    private fun updateMemory(path: List<MemoryPath.Segment>, accessed: Value, assigned: Value): Value =
+        if (path.isEmpty()) assigned
+        else when (val segment = path.first()) {
+            MemoryPath.Dereference -> {
+                val address = accessed.asAddress()
+                val updated = updateMemory(path.drop(1), heap[address], assigned)
+                heap[address] = updated
+                updated
+            }
+
+            is MemoryPath.Member -> {
+                val updatedMembers = accessed.asStructure().map { member ->
+                    if (member.name == segment.name) {
+                        val updatedValue = updateMemory(path.drop(1), member.value, assigned)
+                        Value.Member(member.name, updatedValue)
+                    } else {
+                        member
+                    }
+                }
+                Value.Structure(updatedMembers)
+            }
+        }
 }

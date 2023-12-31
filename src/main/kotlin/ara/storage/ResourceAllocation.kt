@@ -42,4 +42,7 @@ object ResourceAllocation {
 
     fun Syntax.ResourceExpression.asMemoryPaths(): Collection<MemoryPath> =
         ForMemoryPaths.asMemoryPaths(this)
+
+    fun Syntax.Memory.asMemoryPath(): MemoryPath =
+        ForMemoryPaths.asMemoryPath(this)
 }

@@ -18,6 +18,13 @@ sealed interface Value {
             value.toString()
     }
 
+    data class Reference(val address: Int) : Value {
+        override fun toString(): String = when (address) {
+            0 -> "NULL"
+            else -> "#$address"
+        }
+    }
+
     data class Structure(val members: NonEmptyList<Member>) : Value {
         override fun toString(): String =
             members.joinToString(separator = ", ", prefix = "{", postfix = "}") {
@@ -48,9 +55,8 @@ sealed interface Value {
                 return Structure(members.toNonEmptyList())
             }
 
-            override fun reference(base: Type): Value {
-                TODO("Reference node.")
-            }
+            override fun reference(base: Type): Value =
+                Reference(0)
 
             override fun uninitializedVariable(): Value =
                 throw IllegalArgumentException("Cannot provide value for uninitialized type variable.")

@@ -16,13 +16,14 @@ class StackFrame(val direction: Direction, val routine: Syntax.RoutineDefinition
     override fun setNodeValue(node: DescriptorNode<Value>, value: Value) {
         when (node) {
             is InnerNode -> {
-                if (value !is Value.Structure)
-                    throw InternalInconsistencyException("Structure value is required for structure assignment.")
+                internalAssertion(value is Value.Structure) {
+                    "Structure value is required for structure assignment."
+                }
 
                 combineWith(node.data, value.members) { entry, member ->
-                    if (entry.key != member.key)
-                        throw InternalInconsistencyException("Mismatch assigning ${member.name.quoted()} to ${entry.key.quoted()}.")
-
+                    internalAssertion(entry.key == member.key) {
+                        "Mismatch assigning ${member.name.quoted()} to ${entry.key.quoted()}."
+                    }
                     setNodeValue(entry.value, member.value)
                 }
             }

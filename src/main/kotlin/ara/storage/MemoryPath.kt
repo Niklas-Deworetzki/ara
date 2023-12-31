@@ -29,7 +29,7 @@ private constructor(
 
     companion object {
         fun ofDereferencedResource(resource: ResourcePath): MemoryPath =
-            MemoryPath(resource, emptyList())
+            MemoryPath(resource, listOf(Dereference))
 
         private fun formatMemoryAccessor(accessor: Segment): String = when (accessor) {
             Dereference -> "&"

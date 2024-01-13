@@ -1,0 +1,7 @@
+// Structures can be allocated without parentheses.
+
+type Pair = { x: Int, y: Int }
+
+routine allocate( -> pair: &Pair) {
+    pair := &{ x = 0, y = 0 }
+}

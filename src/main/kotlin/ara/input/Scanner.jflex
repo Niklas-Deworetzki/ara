@@ -1,5 +1,6 @@
 package ara.input;
 
+import java.util.List;
 import java_cup.runtime.*;
 import ara.input.*;
 import ara.input.symbol.*;
@@ -40,6 +41,13 @@ import static ara.input.Sym.*;
             return Character.toString(character);
         }
     }
+
+    private List<String> getCommentLines() {
+        return yytext().lines()
+            .filter(line -> !line.isBlank())
+            .map(line -> line.substring(1))
+            .toList();
+    }
 %}
 
 WhiteSpace  = \s+
@@ -55,11 +63,7 @@ Decimal     = [0-9]+
 {WhiteSpace}                         { /* Ignore whitespace */ }
 {LineComment}                        { /* Ignore comments */ }
 {HashComment}                        { if (yychar == 0) {
-                                        final var lines = yytext().lines()
-                                          .filter(line -> !line.isBlank())
-                                          .map(line -> line.substring(1))
-                                          .toList();
-                                        return token(HASHCOMMENT, lines);
+                                        return token(HASHCOMMENT, getCommentLines());
                                        } else {
                                         /* Ignore comments */
                                        }
@@ -77,6 +81,7 @@ Decimal     = [0-9]+
 ":="        { return token(ASSIGNMENT); }
 "&"         { return token(AMPERSAND); }
 "&("        { return token(AMPERSAND_PAREN_L); }
+"&{"        { return token(AMPERSAND_CURL_L); }
 
 "+"         { return token(OPERATOR_ADD); }
 "-"         { return token(OPERATOR_SUB); }

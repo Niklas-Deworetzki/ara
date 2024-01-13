@@ -1,6 +1,7 @@
 package ara.analysis
 
 import ara.analysis.memory.MarkableMemoryDescriptor
+import ara.reporting.Message
 import ara.reporting.Message.Companion.quoted
 import ara.storage.MemoryPath
 import ara.storage.ResourceAllocation.asMemoryPaths
@@ -25,20 +26,9 @@ class MemoryResourceAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
             "Memory resource ${it.quoted()} has already been created by this assignment."
         }
 
-        val destroyedAndNotCreated = destroyedMemory - createdMemory
         val createdAndNotDestroyed = createdMemory - destroyedMemory
-        reportIfNotEmpty(
-            destroyedAndNotCreated,
-            instruction,
-            "Memory resources must be created after they are destroyed.",
-            "The following resources were not created:"
-        )
-        reportIfNotEmpty(
-            createdAndNotDestroyed,
-            instruction,
-            "Memory resources must be destroyed before they can be created.",
-            "The following resources were not destroyed:"
-        )
+        val destroyedAndNotCreated = destroyedMemory - createdMemory
+        reportMismatch(createdAndNotDestroyed, destroyedAndNotCreated, instruction)
     }
 
     private fun markMemoryAndReportWhenMarkedTwice(
@@ -60,18 +50,24 @@ class MemoryResourceAnalysis(val program: Syntax.Program) : Analysis<Unit>() {
         return memoryDescriptor
     }
 
-    private fun reportIfNotEmpty(
-        resources: Collection<MemoryPath>,
-        instruction: Syntax.Instruction,
-        errorHeading: String,
-        resourceListHeading: String
+    private fun reportMismatch(
+        createdAndNotDestroyed: Collection<MemoryPath>,
+        destroyedAndNotCreated: Collection<MemoryPath>,
+        instruction: Syntax.Instruction
     ) {
-        if (resources.isNotEmpty()) {
-            val message = reportError(errorHeading)
+        if (createdAndNotDestroyed.isNotEmpty() || destroyedAndNotCreated.isNotEmpty()) {
+            val message = reportError("Memory resources must be destroyed and created in the same assignment.")
                 .withPositionOf(instruction)
-                .withAdditionalInfo(resourceListHeading)
-            for (resource in resources) {
-                message.withAdditionalInfo("- $resource")
+            addResourcesList(message, createdAndNotDestroyed, "Resources created but not destroyed:")
+            addResourcesList(message, destroyedAndNotCreated, "Resources destroyed but not created:")
+        }
+    }
+
+    private fun addResourcesList(message: Message, resources: Collection<MemoryPath>, header: String) {
+        if (resources.isNotEmpty()) {
+            message.withAdditionalInfo(header)
+            for (memoryPath in resources) {
+                message.withAdditionalInfo("- $memoryPath")
             }
         }
     }

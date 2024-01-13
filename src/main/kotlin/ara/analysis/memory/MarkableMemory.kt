@@ -7,7 +7,9 @@ import ara.utils.formatting.formatToHumanReadable
 
 sealed interface MarkableMemory {
 
-    var isMarked: Boolean
+    fun isMarked(): Boolean
+
+    fun setMarked()
 
     fun access(segment: MemoryPath.Segment): MarkableMemory
 
@@ -16,13 +18,11 @@ sealed interface MarkableMemory {
             it.name to unmarkedForType(it.type)
         }
 
-        override var isMarked: Boolean
-            get() = members.values.any { it.isMarked }
-            set(value) {
-                for (member in this.members.values) {
-                    member.isMarked = value
-                }
-            }
+        override fun isMarked(): Boolean =
+            members.values.any { it.isMarked() }
+
+        override fun setMarked() =
+            members.values.forEach { it.setMarked() }
 
         override fun access(segment: MemoryPath.Segment): MarkableMemory {
             require(segment is MemoryPath.Member) { "Structure can only be accessed via member access operation." }
@@ -33,8 +33,8 @@ sealed interface MarkableMemory {
             return members[segment.name]!!
         }
 
-        internal fun subtractMarked(current: MemoryPath, other: Structure): Collection<MemoryPath> {
-            if (!other.isMarked && this.members.values.all { it.isMarked }) {
+        internal fun subtractFromMarked(current: MemoryPath, other: Structure): Collection<MemoryPath> {
+            if (!other.isMarked() && members.values.all { it.isMarked() }) {
                 return setOf(current) // Return root of struct as difference instead of all members.
             }
             return members.flatMap { (key, thisValue) ->
@@ -52,48 +52,57 @@ sealed interface MarkableMemory {
         private var referenced: MarkableMemory? = null
         private var isSelfMarked: Boolean = false
 
-        override var isMarked: Boolean
-            get() = referenced?.isMarked ?: isSelfMarked
-            set(value) {
-                isSelfMarked = value
-            }
+        override fun isMarked(): Boolean =
+            referenced?.isMarked() ?: isSelfMarked
+
+        override fun setMarked() {
+            isSelfMarked = true
+            referenced = null
+        }
 
         override fun access(segment: MemoryPath.Segment): MarkableMemory {
             require(segment is MemoryPath.Dereference) { "Reference can only be accessed via dereference operation." }
             if (referenced == null) {
-                referenced = unmarkedForType(type.base)
+                referenced = makeReference()
             }
             return referenced!!
         }
 
-        internal fun subtractMarked(current: MemoryPath, other: Reference): Collection<MemoryPath> {
-            if (this.isSelfMarked && !other.isSelfMarked)
-                return setOf(current)
+        private fun makeReference() =
+            unmarkedForType(type.base)
 
-            if (!this.isSelfMarked && !other.isSelfMarked) {
-                // Both have marked references, compare them.
-                return subtract(
+        internal fun subtractFromMarked(current: MemoryPath, other: Reference): Collection<MemoryPath> = when {
+            other.isSelfMarked ->
+                // Other is larger or equal to this, therefore no positive difference is possible.
+                emptySet()
+
+            this.isSelfMarked ->
+                // This must always be larger, as other.isSelfMarked cannot be true.
+                setOf(current)
+
+            else ->
+                subtract(
                     current.withDereference(),
                     this.referenced!!,
-                    other.referenced!!
+                    other.referenced ?: makeReference()
                 )
-            }
-
-            // Either both are isSelfMarked and therefore equivalent
-            // Or other isSelfMarked and this is not, in which case other would be larger
-            // and no positive difference is possible.
-            return emptySet()
         }
     }
 
     class Leaf : MarkableMemory {
-        override var isMarked: Boolean = false
+        private var isMarked: Boolean = false
+
+        override fun isMarked(): Boolean = isMarked
+
+        override fun setMarked() {
+            isMarked = true
+        }
 
         override fun access(segment: MemoryPath.Segment): MarkableMemory {
             throw IllegalStateException("No memory accesses are possible on an atomic non-reference member.")
         }
 
-        internal fun subtractMarked(current: MemoryPath, other: Leaf): Collection<MemoryPath> {
+        internal fun subtractFromMarked(current: MemoryPath, other: Leaf): Collection<MemoryPath> {
             if (!other.isMarked) return setOf(current)
             return emptySet()
         }
@@ -115,20 +124,20 @@ sealed interface MarkableMemory {
             minuend: MarkableMemory,
             subtrahend: MarkableMemory
         ): Collection<MemoryPath> =
-            subtract(MemoryPath.ofDereferencedResource(root), minuend, subtrahend)
+            subtract(MemoryPath(root, emptyList()), minuend, subtrahend)
 
         internal fun subtract(
             current: MemoryPath,
             minuend: MarkableMemory,
             subtrahend: MarkableMemory
         ): Collection<MemoryPath> {
-            if (!minuend.isMarked) { // No positive difference possible, if minuend is not marked.
+            if (!minuend.isMarked()) { // No positive difference possible, if minuend is not marked.
                 return emptySet()
             }
             return when (minuend) {
-                is Leaf -> minuend.subtractMarked(current, subtrahend as Leaf)
-                is Reference -> minuend.subtractMarked(current, subtrahend as Reference)
-                is Structure -> minuend.subtractMarked(current, subtrahend as Structure)
+                is Leaf -> minuend.subtractFromMarked(current, subtrahend as Leaf)
+                is Reference -> minuend.subtractFromMarked(current, subtrahend as Reference)
+                is Structure -> minuend.subtractFromMarked(current, subtrahend as Structure)
             }
         }
     }

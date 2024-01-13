@@ -1,5 +1,5 @@
 # Error: Finalizing in-memory values does not finalize reference.
-# Memory resources must be created after they are destroyed.
+# Memory resources must be destroyed and created in the same assignment.
 
 type Pair = { x: Int, y: Int }
 

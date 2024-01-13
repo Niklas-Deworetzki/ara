@@ -13,8 +13,8 @@ class MarkableMemoryDescriptor(environment: Environment) :
     fun mark(memoryPath: MemoryPath): Boolean {
         val memory = getAccessedMemory(memoryPath)
 
-        val hasBeenMarkedBefore = memory.isMarked
-        memory.isMarked = true
+        val hasBeenMarkedBefore = memory.isMarked()
+        memory.setMarked()
         return hasBeenMarkedBefore
     }
 

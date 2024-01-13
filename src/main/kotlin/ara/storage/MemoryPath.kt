@@ -2,8 +2,7 @@ package ara.storage
 
 import java.util.*
 
-class MemoryPath
-private constructor(
+class MemoryPath(
     val resource: ResourcePath,
     val path: List<Segment>
 ) {
@@ -25,7 +24,7 @@ private constructor(
         Objects.hash(resource, path)
 
     override fun toString(): String =
-        resource.toString() + path.joinToString(separator = "") { formatMemoryAccessor(it) }
+        resource.toString() + path.joinToString(separator = "", transform = ::formatMemoryAccessor)
 
     companion object {
         fun ofDereferencedResource(resource: ResourcePath): MemoryPath =

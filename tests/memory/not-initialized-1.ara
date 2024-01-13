@@ -1,5 +1,5 @@
 # Error: A variable name may appear at most once per parameter list.
-# Memory resources must be created after they are destroyed.
+# Memory resources must be destroyed and created in the same assignment.
 
 routine g(n: {value: &Int} -> n) {
     0 := n.value&

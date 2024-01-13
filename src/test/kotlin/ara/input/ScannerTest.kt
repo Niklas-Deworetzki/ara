@@ -18,6 +18,10 @@ class ScannerTest {
     @Test
     fun scannerRecognizesSimpleTokens() {
         "routine".firstToken().shouldBeToken(Sym.ROUTINE)
+        "type".firstToken().shouldBeToken(Sym.TYPE)
+        "call".firstToken().shouldBeToken(Sym.CALL)
+        "uncall".firstToken().shouldBeToken(Sym.UNCALL)
+        "null".firstToken().shouldBeToken(Sym.NULL)
         ":".firstToken().shouldBeToken(Sym.COLON)
         ",".firstToken().shouldBeToken(Sym.COMMA)
         ".".firstToken().shouldBeToken(Sym.DOT)
@@ -99,7 +103,7 @@ class ScannerTest {
     fun scannerRecognizesSequence() {
         """
             identifier_ending_with_numbers123456789
-            AAAA bbbb A_a routine type call uncall
+            AAAA bbbb A_a routine type call uncall null
             0 1 2 3 4 5 6 7 8 9
             // All operators:
             + - ^ * / % == != < <= > >=
@@ -114,6 +118,7 @@ class ScannerTest {
             Sym.TYPE,
             Sym.CALL,
             Sym.UNCALL,
+            Sym.NULL,
             Sym.INTEGER,
             Sym.INTEGER,
             Sym.INTEGER,

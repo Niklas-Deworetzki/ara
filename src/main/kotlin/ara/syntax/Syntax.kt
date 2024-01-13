@@ -162,6 +162,14 @@ sealed class Syntax {
     }
 
     /**
+     * A reference to uninitialized memory.
+     * ```
+     *  null
+     * ```
+     */
+    class NullReferenceLiteral : ResourceExpression()
+
+    /**
      * An expression allocating some value in memory (during forward execution)
      * or releasing some value from memory (during backward direction).
      * ```

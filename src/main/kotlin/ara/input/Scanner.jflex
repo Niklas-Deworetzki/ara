@@ -73,6 +73,7 @@ Decimal     = [0-9]+
 "type"      { return token(TYPE); }
 "call"      { return token(CALL); }
 "uncall"    { return token(UNCALL); }
+"null"      { return token(NULL); }
 
 ":"         { return token(COLON); }
 ","         { return token(COMMA); }

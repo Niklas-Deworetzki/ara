@@ -215,8 +215,15 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
             val memberType = structureType.getMembersType(member.name)
 
             if (memberType == null) {
-                reportError("Type $structureType does not have a member named ${member}.")
+                val message = reportError("Type $structureType does not have a member named ${member}.")
                     .withPositionOf(member)
+
+                val isReferenceToMatchingType = structureType
+                    .getReferenceBase()
+                    ?.getMembersType(member.name) != null
+                if (isReferenceToMatchingType) {
+                    message.withAdditionalInfo("Perhaps a dereference is missing?")
+                }
                 return Type.Variable()
             }
             return memberType

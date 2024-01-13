@@ -84,16 +84,19 @@ class IntegrationTests {
         }
     }
 
+    private fun Any.extractTestSpecLines(): List<String> =
+        (this as List<*>).map { it as String }
+            .map { it.trim() }
+
     private fun parseTestSpecification(file: File): TestSpecification =
         InputSource.fromFile(file).open().use { reader ->
-            val scanner = Scanner(reader)
-            val lines = mutableListOf<String>()
+            val token = Scanner(reader).next_token()
+            val lines: List<String> = when {
+                token.sym == Sym.HASHCOMMENT ->
+                    token.value.extractTestSpecLines()
 
-            var token = scanner.next_token()
-            while (token.sym == Sym.HASHCOMMENT) {
-                val comment = (token.value!! as String).trim()
-                lines.add(comment)
-                token = scanner.next_token()
+                else ->
+                    emptyList()
             }
 
             val header = lines.firstOrNull()

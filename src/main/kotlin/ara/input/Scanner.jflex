@@ -45,17 +45,25 @@ import static ara.input.Sym.*;
 WhiteSpace  = \s+
 
 LineComment = "//".*
-HashComment = "#".*
+HashComment = ("#".*[\n\r]*)+
 
 Identifier  = [a-zA-Z_][a-zA-Z0-9_]*
 Decimal     = [0-9]+
 
 %%
 
-^{HashComment}             { return token(HASHCOMMENT, yytext().substring(1)); }
 {WhiteSpace}                         { /* Ignore whitespace */ }
 {LineComment}                        { /* Ignore comments */ }
-
+{HashComment}                        { if (yychar == 0) {
+                                        final var lines = yytext().lines()
+                                          .filter(line -> !line.isBlank())
+                                          .map(line -> line.substring(1))
+                                          .toList();
+                                        return token(HASHCOMMENT, lines);
+                                       } else {
+                                        /* Ignore comments */
+                                       }
+                                     }
 
 "routine"   { return token(ROUTINE); }
 "type"      { return token(TYPE); }

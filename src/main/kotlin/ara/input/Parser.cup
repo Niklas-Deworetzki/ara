@@ -53,7 +53,8 @@ public void unrecovered_syntax_error(Symbol currentToken) {
 
 terminal String     IDENTIFIER;
 terminal Integer    INTEGER;
-terminal String     HASHCOMMENT, UNKNOWN;
+terminal String     UNKNOWN;
+terminal List<String> HASHCOMMENT;
 
 terminal    ROUTINE, TYPE;
 terminal    CALL, UNCALL;
@@ -103,7 +104,7 @@ start with Program;
 Epsilon ::= /* Empty symbol. */
           ;
 
-IgnoredCommentLines ::= HASHCOMMENT IgnoredCommentLines
+IgnoredCommentLines ::= HASHCOMMENT
                       | Epsilon
                       ;
 
@@ -115,13 +116,13 @@ Identifier ::= IDENTIFIER:name
 //
 //
 
-Program ::= GlobalDefinitionList:result
+Program ::= IgnoredCommentLines GlobalDefinitionList:result
              {: RESULT = new Program(result); :}
           ;
 
-GlobalDefinitionList ::= IgnoredCommentLines Definition:head GlobalDefinitionList:tail
+GlobalDefinitionList ::= Definition:head GlobalDefinitionList:tail
                           {: RESULT = cons(head, tail); :}
-                       | IgnoredCommentLines
+                       | Epsilon
                           {: RESULT = nil(); :}
                        ;
 

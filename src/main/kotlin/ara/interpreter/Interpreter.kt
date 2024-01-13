@@ -238,6 +238,9 @@ class Interpreter(val program: Syntax.Program) : Runnable {
                 return Value.Structure(evaluatedMembers.toNonEmptyList())
             }
 
+            is Syntax.NullReferenceLiteral ->
+                return Value.NULL_REFERENCE
+
             // Fetch resource from path.
             is Syntax.Storage ->
                 return currentStackFrame[expression.asResourcePath()]
@@ -276,6 +279,11 @@ class Interpreter(val program: Syntax.Program) : Runnable {
                     initialize(member.value, data.value)
                 }
             }
+
+            is Syntax.NullReferenceLiteral ->
+                ensureReversibility(value.asAddress() == Value.NULL_REFERENCE.address) {
+                    "Expected ${Value.NULL_REFERENCE} but got $value"
+                }
 
             // Initialize resource described by path.
             is Syntax.Storage ->

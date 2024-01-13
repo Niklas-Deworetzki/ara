@@ -8,7 +8,6 @@ import ara.syntax.Syntax
 import ara.syntax.Syntax.ComparisonOperator.*
 import ara.syntax.Typeable
 import ara.syntax.extensions.lookupVariableType
-import ara.syntax.extensions.routines
 import ara.types.Type
 import ara.types.extensions.getMembersType
 import ara.types.extensions.getReferenceBase
@@ -61,6 +60,9 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
 
                 is Syntax.StructureLiteral ->
                     checkStructureLiteral(this)
+
+                is Syntax.NullReferenceLiteral ->
+                    Type.Reference(Type.Variable())
 
                 is Syntax.AllocationExpression ->
                     checkAllocationExpression(this)

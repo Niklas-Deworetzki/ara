@@ -3,6 +3,7 @@ package ara.interpreter
 import ara.types.Type
 import ara.utils.NonEmptyList
 import ara.utils.NonEmptyList.Companion.toNonEmptyList
+import ara.utils.formatting.AddressFormatter
 import ara.utils.zip
 import java.lang.IllegalArgumentException
 
@@ -19,10 +20,8 @@ sealed interface Value {
     }
 
     data class Reference(val address: Int) : Value {
-        override fun toString(): String = when (address) {
-            0 -> "NULL"
-            else -> "#$address"
-        }
+        override fun toString(): String =
+            AddressFormatter.formatAddress(address)
     }
 
     data class Structure(val members: NonEmptyList<Member>) : Value {
@@ -39,6 +38,8 @@ sealed interface Value {
 
     companion object {
         val ZERO: Value = Integer(0)
+
+        val NULL_REFERENCE = Reference(0)
 
         fun defaultValueForType(type: Type): Value =
             DefaultValueAlgebra.evaluate(type)

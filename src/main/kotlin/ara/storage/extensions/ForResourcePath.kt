@@ -28,7 +28,9 @@ internal object ForResourcePath {
         is Syntax.StructureLiteral ->
             expression.members.flatMap { asResourcePaths(it.value) }
 
-        is Syntax.IntegerLiteral, is Syntax.Memory ->
+        is Syntax.IntegerLiteral,
+        is Syntax.NullReferenceLiteral,
+        is Syntax.Memory ->
             emptyList()
     }
 

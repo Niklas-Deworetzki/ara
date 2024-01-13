@@ -18,9 +18,8 @@ object ForMemoryPaths {
             expression.members.flatMap { allMemoryReferences(it.value) }
 
         is Syntax.IntegerLiteral,
-        is Syntax.MemberAccess,
-        is Syntax.NamedStorage,
-        is Syntax.TypedStorage ->
+        is Syntax.NullReferenceLiteral,
+        is Syntax.Storage ->
             emptyList()
     }
 

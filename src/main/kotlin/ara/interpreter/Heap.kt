@@ -20,12 +20,4 @@ class Heap {
     fun free(address: Int): Value {
         return allocated.remove(address) ?: throw SegmentationFault(address)
     }
-
-    class SegmentationFault(address: Int) :
-        IllegalStateException("Illegal access at unmapped address ${formatAddress(address)}.")
-
-    private companion object {
-        fun formatAddress(address: Int): String =
-            String.format("0x%1\$08X (%1\$d)", address)
-    }
 }

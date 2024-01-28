@@ -60,6 +60,7 @@ terminal    NULL;
 terminal    ROUTINE, TYPE;
 terminal    CALL, UNCALL;
 terminal    COLON, DOT, COMMA, EQ, AMPERSAND;
+terminal    AMPERSAND_PAREN_L;
 terminal    ASSIGNMENT;
 
 terminal    OPERATOR_ADD, OPERATOR_SUB, OPERATOR_XOR, OPERATOR_MUL, OPERATOR_DIV, OPERATOR_MOD;
@@ -68,7 +69,6 @@ terminal    OPERATOR_EQU, OPERATOR_NEQ, OPERATOR_LST, OPERATOR_LSE, OPERATOR_GRT
 terminal    ARROW_L, ARROW_R;
 terminal    PAREN_L, PAREN_R;
 terminal    CURL_L, CURL_R;
-terminal    AMPERSAND_PAREN_L, AMPERSAND_CURL_L;
 
 non terminal Program                    Program;
 non terminal Identifier                 Identifier;
@@ -288,9 +288,6 @@ NullReference ::= NULL:anchor
 
 AllocationExpression ::= AMPERSAND_PAREN_L:l ResourceExpression:expression PAREN_R:r
                           {: RESULT = withRange(new AllocationExpression(expression), lleft, rright); :}
-                       | AMPERSAND_CURL_L:l StructureLiteralMembersList:members CURL_R:r
-                          {: var allocated = withRange(new StructureLiteral(members), lleft, rright);
-                             RESULT = withRange(new AllocationExpression(allocated), lleft, rright); :}
                        ;
 
 Storage ::= BaseStorage:base StorageSuffixes:suffixes

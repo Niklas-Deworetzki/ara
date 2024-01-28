@@ -82,7 +82,6 @@ Decimal     = [0-9]+
 ":="        { return token(ASSIGNMENT); }
 "&"         { return token(AMPERSAND); }
 "&("        { return token(AMPERSAND_PAREN_L); }
-"&{"        { return token(AMPERSAND_CURL_L); }
 
 "+"         { return token(OPERATOR_ADD); }
 "-"         { return token(OPERATOR_SUB); }

@@ -55,6 +55,21 @@ class IntegrationTests {
             }
 
             is NegativeTest -> {
+                if (!analysis.hasReportedErrors) {
+                    throw TestFailure(
+                        specification,
+                        "Analysis should report some errors but none were found.",
+                        missingErrors = specification.errors
+                    )
+                }
+                if (specification.errors.isEmpty()) {
+                    throw TestFailure(
+                        specification,
+                        "No errors were specified for this test case.",
+                        missingErrors = analysis.reportedErrors.map { it.message }
+                    )
+                }
+
                 val missingErrors = specification.errors
                     .filterNot { error -> analysis.reportedErrors.any { it.message == error } }
 
@@ -69,16 +84,19 @@ class IntegrationTests {
         }
     }
 
+    private fun Any.extractTestSpecLines(): List<String> =
+        (this as List<*>).map { it as String }
+            .map { it.trim() }
+
     private fun parseTestSpecification(file: File): TestSpecification =
         InputSource.fromFile(file).open().use { reader ->
-            val scanner = Scanner(reader)
-            val lines = mutableListOf<String>()
+            val token = Scanner(reader).next_token()
+            val lines: List<String> = when {
+                token.sym == Sym.HASHCOMMENT ->
+                    token.value.extractTestSpecLines()
 
-            var token = scanner.next_token()
-            while (token.sym == Sym.HASHCOMMENT) {
-                val comment = (token.value!! as String).trim()
-                lines.add(comment)
-                token = scanner.next_token()
+                else ->
+                    emptyList()
             }
 
             val header = lines.firstOrNull()

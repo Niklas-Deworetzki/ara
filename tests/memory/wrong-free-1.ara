@@ -1,0 +1,8 @@
+# Error: Finalizing in-memory values does not finalize reference.
+# Memory resources must be destroyed and created in the same assignment.
+
+type Pair = { x: Int, y: Int }
+
+routine wrong_free_1(ref: &Pair -> ref, x: Int, y: Int) {
+    (x, y) := (ref&.x, ref&.y)
+}

@@ -9,20 +9,21 @@ import ara.utils.combineWith
 import java.util.*
 
 class StackFrame(val direction: Direction, val routine: Syntax.RoutineDefinition, val caller: Syntax.Call? = null) :
-    StorageDescriptor<Value>(fromEnvironment(routine.localEnvironment, Value.ZERO)) {
+    StorageDescriptor.WithGetSet<Value, Value>(fromEnvironment(routine.localEnvironment, Value.ZERO)) {
 
     val queuedInstructions: Queue<Syntax.Instruction> = ArrayDeque()
 
     override fun setNodeValue(node: DescriptorNode<Value>, value: Value) {
         when (node) {
             is InnerNode -> {
-                if (value !is Value.Structure)
-                    throw InternalInconsistencyException("Structure value is required for structure assignment.")
+                internalAssertion(value is Value.Structure) {
+                    "Structure value is required for structure assignment."
+                }
 
                 combineWith(node.data, value.members) { entry, member ->
-                    if (entry.key != member.key)
-                        throw InternalInconsistencyException("Mismatch assigning ${member.name.quoted()} to ${entry.key.quoted()}.")
-
+                    internalAssertion(entry.key == member.key) {
+                        "Mismatch assigning ${member.name.quoted()} to ${entry.key.quoted()}."
+                    }
                     setNodeValue(entry.value, member.value)
                 }
             }

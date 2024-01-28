@@ -14,3 +14,9 @@ fun <E> List<E>.formatToHumanReadable(
         separatedList + lastSeparator + lastElement
     }
 }
+
+fun <E> Iterable<E>.formatToHumanReadable(
+    normalSeparator: String,
+    lastSeparator: String,
+    toStringFunction: (E) -> String = java.lang.String::valueOf
+): String? = this.toList().formatToHumanReadable(normalSeparator, lastSeparator, toStringFunction)

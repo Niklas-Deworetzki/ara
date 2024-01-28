@@ -18,6 +18,10 @@ class ScannerTest {
     @Test
     fun scannerRecognizesSimpleTokens() {
         "routine".firstToken().shouldBeToken(Sym.ROUTINE)
+        "type".firstToken().shouldBeToken(Sym.TYPE)
+        "call".firstToken().shouldBeToken(Sym.CALL)
+        "uncall".firstToken().shouldBeToken(Sym.UNCALL)
+        "null".firstToken().shouldBeToken(Sym.NULL)
         ":".firstToken().shouldBeToken(Sym.COLON)
         ",".firstToken().shouldBeToken(Sym.COMMA)
         ".".firstToken().shouldBeToken(Sym.DOT)
@@ -40,6 +44,8 @@ class ScannerTest {
         ")".firstToken().shouldBeToken(Sym.PAREN_R)
         "{".firstToken().shouldBeToken(Sym.CURL_L)
         "}".firstToken().shouldBeToken(Sym.CURL_R)
+        "&".firstToken().shouldBeToken(Sym.AMPERSAND)
+        "&(".firstToken().shouldBeToken(Sym.AMPERSAND_PAREN_L)
     }
 
     @Test
@@ -49,20 +55,33 @@ class ScannerTest {
 
     @Test
     fun scannerSkipsComments() {
-        """
+        val tokens = """
             // This should be recognized as a comment.
-            +
-        """.firstToken().shouldBeToken(Sym.OPERATOR_ADD)
+            + # This should also be a comment.
+        """.tokens()
+
+        tokens.size.shouldBe(1)
+        tokens.first().shouldBeToken(Sym.OPERATOR_ADD)
     }
 
     @Test
     fun scannerExtractsTextFromHashComments() {
-        val token = """
-            #I am a special comment.
-        """.firstToken()
+        val token = "#I am a special comment.".firstToken()
 
         token.shouldBeToken(Sym.HASHCOMMENT)
-        token.value.shouldBe("I am a special comment.")
+        token.value.shouldBe(listOf("I am a special comment."))
+    }
+
+    @Test
+    fun scannerExtractTextFromMultipleHashComments() {
+        val token = """
+            # a
+            # b
+            #
+            # c
+        """.trimIndent().firstToken()
+
+        token.value.shouldBe(listOf(" a", " b", "", " c"))
     }
 
     @Test
@@ -83,12 +102,12 @@ class ScannerTest {
     fun scannerRecognizesSequence() {
         """
             identifier_ending_with_numbers123456789
-            AAAA bbbb A_a routine type call uncall
+            AAAA bbbb A_a routine type call uncall null
             0 1 2 3 4 5 6 7 8 9
             // All operators:
             + - ^ * / % == != < <= > >=
             // Arrows and remaining stuff
-            <- -> ( ) { } : , . := =
+            <- -> ( ) { } : , . := = & &(
         """.shouldContainTokensAndEOF(
             Sym.IDENTIFIER,
             Sym.IDENTIFIER,
@@ -98,6 +117,7 @@ class ScannerTest {
             Sym.TYPE,
             Sym.CALL,
             Sym.UNCALL,
+            Sym.NULL,
             Sym.INTEGER,
             Sym.INTEGER,
             Sym.INTEGER,
@@ -130,7 +150,9 @@ class ScannerTest {
             Sym.COMMA,
             Sym.DOT,
             Sym.ASSIGNMENT,
-            Sym.EQ
+            Sym.EQ,
+            Sym.AMPERSAND,
+            Sym.AMPERSAND_PAREN_L
         )
     }
 
@@ -172,6 +194,21 @@ class ScannerTest {
     private fun String.firstToken(): Symbol {
         val input = InputSource.fromString(this)
         return input.open().use { Scanner(it).next_token() }
+    }
+
+    private fun String.tokens(): List<Symbol> {
+        val input = InputSource.fromString(this)
+        return input.open().use {
+            val scanner = Scanner(it)
+            val tokens = mutableListOf<Symbol>()
+            var currentToken: Symbol
+
+            do {
+                currentToken = scanner.next_token()
+                tokens.add(currentToken)
+            } while (currentToken.sym != Sym.EOF)
+            tokens.dropLast(1)
+        }
     }
 
     private fun Symbol.shouldBeToken(id: Int) {

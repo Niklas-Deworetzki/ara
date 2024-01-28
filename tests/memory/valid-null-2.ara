@@ -1,0 +1,4 @@
+
+routine foo ( -> ) {
+    &(2) := null
+}

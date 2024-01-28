@@ -5,7 +5,6 @@ import ara.analysis.type.TypeComputation.Companion.computedType
 import ara.reporting.Message
 import ara.syntax.Syntax
 import ara.syntax.extensions.lookupVariableType
-import ara.syntax.extensions.routines
 import ara.types.Signature
 
 /**
@@ -16,10 +15,8 @@ class ParameterTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit
     override fun reportTypeError(message: Message): Message =
         reportError(message)
 
-    override fun runAnalysis() {
-        for (routine in program.routines) {
-            verifyParameterLists(routine)
-        }
+    override fun runAnalysis() = forEachRoutineIn(program) {
+        verifyParameterLists(routine)
     }
 
     private fun verifyParameterLists(routine: Syntax.RoutineDefinition) {

@@ -7,13 +7,13 @@ routine fac(n: Int) -> (result: Int) {
     result := 1
     -> Entry
 
-    Entry, Loop <- (result == 1)
+    <- Entry, Loop (result == 1)
         (result, n) := call multiply (result, n)
 
         n := n - (1 + 0)
-    (n == 0) -> Exit, Loop
+    -> Exit, Loop (n == 0)
 
-    Exit <-
+    <- Exit
     0 := n
 }
 

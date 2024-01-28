@@ -1,0 +1,9 @@
+# Error: In-memory resource is used twice.
+# Memory resource `x&' has already been destroyed by this assignment.
+# Memory resources must be destroyed and created in the same assignment.
+
+type Pair = { x: Int, y: Int }
+
+routine multi_release_1(x: &Int -> x) {
+    (0, 0) := (x&, x&)
+}

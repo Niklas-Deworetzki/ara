@@ -1,0 +1,4 @@
+
+routine multi_assignment(n: &Int -> n: &Int) {
+    (n&, 0) := (1, n&)
+}

@@ -1,0 +1,4 @@
+
+routine m ( -> result: &Int) {
+    result := &(1)
+}

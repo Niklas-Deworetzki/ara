@@ -1,0 +1,7 @@
+
+
+type Pair = { x: Int, y: Int }
+
+routine free(ref: &Pair -> x: Int, y: Int) {
+    &({ x = x, y = y }) := ref
+}

@@ -28,9 +28,21 @@ private <S extends Syntax> S withRange(S syntax, int left, int right) {
     return syntax;
 }
 
+private Instruction newArithmeticAssignmentIfValid(
+    List<ResourceExpression> dsts, List<ResourceExpression> srcs, ArithmeticModifier mod,
+    int left, int right
+) {
+    if (dsts.size() != 1 || srcs.size() != 1) {
+        reporter.reportCustomError("Arithmetic modifiers are only allowed with individual assignments.", new Range(source, left, right));
+        return withRange(new MultiAssignment(dsts, srcs), left, right);
+    }
+    return withRange(new ArithmeticAssignment(dsts.get(0), srcs.get(0), mod), left, right);
+}
+
 @Override
 public void syntax_error(Symbol currentToken) {
-    reporter.reportSyntaxError((Token) currentToken, expected_token_ids());
+    expected_token_ids(); // First call sometimes returns invalid results.
+    reporter.reportWrongToken((Token) currentToken, expected_token_ids());
 }
 
 @Override
@@ -41,11 +53,14 @@ public void unrecovered_syntax_error(Symbol currentToken) {
 
 terminal String     IDENTIFIER;
 terminal Integer    INTEGER;
-terminal String     HASHCOMMENT, UNKNOWN;
+terminal String     UNKNOWN;
+terminal List<String> HASHCOMMENT;
 
+terminal    NULL;
 terminal    ROUTINE, TYPE;
 terminal    CALL, UNCALL;
-terminal    COLON, COMMA, DOT, EQ;
+terminal    COLON, DOT, COMMA, EQ, AMPERSAND;
+terminal    AMPERSAND_PAREN_L;
 terminal    ASSIGNMENT;
 
 terminal    OPERATOR_ADD, OPERATOR_SUB, OPERATOR_XOR, OPERATOR_MUL, OPERATOR_DIV, OPERATOR_MOD;
@@ -61,19 +76,22 @@ non terminal List<Definition>           GlobalDefinitionList;
 non terminal Definition                 Definition, TypeDefinition, RoutineDefinition;
 non terminal List<Parameter>            ParameterList, ParameterListTail;
 non terminal Parameter                  Parameter;
-non terminal List<Instruction>          InstructionList;
-non terminal Instruction                Instruction, ArithmeticAssignment, MultiAssignment, Unconditional, Conditional, Call;
-non terminal List<ResourceExpression>   ArgumentList, ArgumentListTail;
-non terminal ResourceExpression         ResourceExpression, IntegerLiteral, StructureLiteral;
+non terminal List<Instruction>          Body, InstructionList;
+non terminal Instruction                Instruction, Assignment, Control, Call;
+non terminal List<ResourceExpression>   ArgumentList, ArgumentListTail, ResourceList;
+non terminal ResourceExpression         ResourceExpression, IntegerLiteral, StructureLiteral, AllocationExpression, NullReference;
 non terminal List<StructureLiteral.Member> StructureLiteralMembersList, StructureLiteralMemberListTail;
 non terminal StructureLiteral.Member    StructureLiteralMember;
 non terminal Storage                    Storage, BaseStorage, NamedStorage;
-non terminal List<Function<Storage, Storage>> StorageExtensions;
-non terminal Function<Storage, Storage> TypedStorageExtension, MemberAccessExtension;
+non terminal List<Function<Storage, Storage>> StorageSuffixes;
+non terminal Function<Storage, Storage> TypedStorageSuffix, MemberAccessSuffix;
+non terminal Memory                     Memory;
+non terminal List<Function<Memory, Memory>> MemorySuffixes;
+non terminal Function<Memory, Memory>   DereferencedMemorySuffix, MemoryMemberSuffix;
 non terminal ArithmeticModifier         ArithmeticModifier;
 non terminal ArithmeticExpression       ArithmeticExpression, ArithmeticBinary, ArithmeticValue;
 non terminal ConditionalExpression      ConditionalExpression, ComparativeBinary;
-non terminal Type                       Type, NamedType, StructureType;
+non terminal Type                       Type, NamedType, StructureType, ReferenceType;
 non terminal List<StructureType.Member> StructureTypeMemberList, StructureTypeMemberListTail;
 non terminal StructureType.Member       StructureTypeMember;
 non terminal ModificationOperator       ModificationOperator;
@@ -87,7 +105,7 @@ start with Program;
 Epsilon ::= /* Empty symbol. */
           ;
 
-IgnoredCommentLines ::= HASHCOMMENT IgnoredCommentLines
+IgnoredCommentLines ::= HASHCOMMENT
                       | Epsilon
                       ;
 
@@ -120,11 +138,15 @@ TypeDefinition ::= TYPE:l Identifier:name EQ Type:type
                     {: RESULT = withRange(new TypeDefinition(name, type), lleft, typeright); :}
                  ;
 
-RoutineDefinition ::= ROUTINE:l Identifier:name PAREN_L ParameterList:in ARROW_R ParameterList:out PAREN_R CURL_L InstructionList:body CURL_R:r
-                       {: RESULT = withRange(new RoutineDefinition(name, in, out, body), lleft, rright); :}
-                    | ROUTINE:l Identifier:name PAREN_L ParameterList:in PAREN_R ARROW_R PAREN_L ParameterList:out PAREN_R CURL_L InstructionList:body CURL_R:r
-                       {: RESULT = withRange(new RoutineDefinition(name, in, out, body), lleft, rright); :}
+RoutineDefinition ::= ROUTINE:anchor Identifier:name PAREN_L ParameterList:in ARROW_R ParameterList:out PAREN_R Body:body
+                       {: RESULT = withRange(new RoutineDefinition(name, in, out, body), anchorleft, bodyright); :}
+                    | ROUTINE:anchor Identifier:name PAREN_L ParameterList:in PAREN_R ARROW_R PAREN_L ParameterList:out PAREN_R Body:body
+                       {: RESULT = withRange(new RoutineDefinition(name, in, out, body), anchorleft, bodyright); :}
                     ;
+
+Body ::= CURL_L InstructionList:body CURL_R
+          {: RESULT = body; :}
+       ;
 
 //
 //
@@ -152,45 +174,49 @@ Parameter ::= Identifier:name
 //
 //
 
-InstructionList ::= Instruction:head InstructionList:tail
+InstructionList ::= Instruction:head  InstructionList:tail
                      {: RESULT = cons(head, tail); :}
                   | Epsilon
                      {: RESULT = nil(); :}
                   ;
 
-Instruction ::= ArithmeticAssignment:result
+Instruction ::= Assignment:result
                  {: RESULT = result; :}
-              | MultiAssignment:result
-                 {: RESULT = result; :}
-              | Unconditional:result
-                 {: RESULT = result; :}
-              | Conditional:result
+              | Control:result
                  {: RESULT = result; :}
               | Call:result
                  {: RESULT = result; :}
               ;
 
-ArithmeticAssignment ::= ResourceExpression:dst ASSIGNMENT ResourceExpression:src
-                          {: RESULT = withRange(new MultiAssignment(cons(dst, nil()), cons(src, nil())), dstleft, srcright); :}
-                       | ResourceExpression:dst ASSIGNMENT ResourceExpression:src ArithmeticModifier:mod
-                          {: RESULT = withRange(new ArithmeticAssignment(dst, src, mod), dstleft, modright); :}
-                       ;
+Assignment ::= ArgumentList:dst ASSIGNMENT ArgumentList:src
+                {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
+             | ArgumentList:dst ASSIGNMENT ResourceList:src
+                {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
+             | ResourceList:dst ASSIGNMENT ArgumentList:src
+                {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
+             | ResourceList:dst ASSIGNMENT ResourceList:src
+                {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
 
-MultiAssignment ::= ArgumentList:dst ASSIGNMENT ArgumentList:src
-                     {: RESULT = withRange(new MultiAssignment(dst, src), dstleft, srcright); :}
-                  ;
+             | ArgumentList:dst ASSIGNMENT ArgumentList:src ArithmeticModifier:mod
+                {: RESULT = newArithmeticAssignmentIfValid(dst, src, mod, dstleft, srcright); :}
+             | ArgumentList:dst ASSIGNMENT ResourceList:src ArithmeticModifier:mod
+                {: RESULT = newArithmeticAssignmentIfValid(dst, src, mod, dstleft, srcright); :}
+             | ResourceList:dst ASSIGNMENT ArgumentList:src ArithmeticModifier:mod
+                {: RESULT = newArithmeticAssignmentIfValid(dst, src, mod, dstleft, srcright); :}
+             | ResourceList:dst ASSIGNMENT ResourceList:src ArithmeticModifier:mod
+                {: RESULT = newArithmeticAssignmentIfValid(dst, src, mod, dstleft, srcright); :}
+             ;
 
-Unconditional ::= ARROW_R:arrow Identifier:label
-                   {: RESULT = withRange(new Unconditional(Direction.FORWARD, label), arrowleft, labelright); :}
-                | Identifier:label ARROW_L:arrow
-                   {: RESULT = withRange(new Unconditional(Direction.BACKWARD, label), labelleft, arrowright); :}
-                ;
 
-Conditional ::= ConditionalExpression:condition ARROW_R Identifier:ltarget COMMA Identifier:rtarget
-                 {: RESULT = withRange(new Conditional(Direction.FORWARD, ltarget, rtarget, condition), conditionleft, rtargetright); :}
-              | Identifier:ltarget COMMA Identifier:rtarget ARROW_L ConditionalExpression:condition
-                 {: RESULT = withRange(new Conditional(Direction.BACKWARD, ltarget, rtarget, condition), ltargetleft, conditionright); :}
-              ;
+Control ::= ARROW_R:arrow Identifier:label
+             {: RESULT = withRange(new Unconditional(Direction.FORWARD, label), arrowleft, labelright); :}
+          | ARROW_L:arrow Identifier:label
+             {: RESULT = withRange(new Unconditional(Direction.BACKWARD, label), arrowleft, labelright); :}
+          | ARROW_R:arrow Identifier:ltarget COMMA Identifier:rtarget ConditionalExpression:condition
+             {: RESULT = withRange(new Conditional(Direction.FORWARD, ltarget, rtarget, condition), arrowleft, conditionright); :}
+          | ARROW_L:arrow Identifier:ltarget COMMA Identifier:rtarget ConditionalExpression:condition
+             {: RESULT = withRange(new Conditional(Direction.BACKWARD, ltarget, rtarget, condition), arrowleft, conditionright); :}
+          ;
 
 Call ::= ArgumentList:lhs ASSIGNMENT CALL Identifier:routine ArgumentList:rhs
           {: RESULT = withRange(new Call(lhs, rhs, Direction.FORWARD, routine), lhsleft, rhsright); :}
@@ -214,11 +240,21 @@ ArgumentList ::= PAREN_L ResourceExpression:head ArgumentListTail:tail PAREN_R
                   {: RESULT = nil(); :}
                ;
 
+ResourceList ::= ResourceExpression:head ArgumentListTail:tail
+                  {: RESULT = cons(head, tail); :}
+               ;
+
 ResourceExpression ::= IntegerLiteral:result
                         {: RESULT = result; :}
                      | StructureLiteral:result
                         {: RESULT = result; :}
+                     | AllocationExpression:result
+                        {: RESULT = result; :}
+                     | NullReference:result
+                        {: RESULT = result; :}
                      | Storage:result
+                        {: RESULT = result; :}
+                     | Memory:result
                         {: RESULT = result; :}
                      ;
 
@@ -246,9 +282,17 @@ IntegerLiteral ::= INTEGER:value
                     {: RESULT = withRange(new IntegerLiteral(value), valueleft, valueright); :}
                  ;
 
-Storage ::= BaseStorage:base StorageExtensions:extensions
+NullReference ::= NULL:anchor
+                   {: RESULT = withRange(new NullReferenceLiteral(), anchorleft, anchorright); :}
+                ;
+
+AllocationExpression ::= AMPERSAND_PAREN_L:l ResourceExpression:expression PAREN_R:r
+                          {: RESULT = withRange(new AllocationExpression(expression), lleft, rright); :}
+                       ;
+
+Storage ::= BaseStorage:base StorageSuffixes:suffixes
              {: RESULT = base;
-                for (var constructor : extensions) {
+                for (var constructor : suffixes) {
                     RESULT = constructor.apply(RESULT);
                 }
              :}
@@ -262,21 +306,45 @@ NamedStorage ::= Identifier:name
                   {: RESULT = withRange(new NamedStorage(name), nameleft, nameright); :}
                ;
 
-StorageExtensions ::= TypedStorageExtension:head StorageExtensions:tail
-                       {: RESULT = cons(head, tail); :}
-                    | MemberAccessExtension:head StorageExtensions:tail
-                       {: RESULT = cons(head, tail); :}
-                    | Epsilon
-                       {: RESULT = nil(); :}
-                    ;
+StorageSuffixes ::= TypedStorageSuffix:head StorageSuffixes:tail
+                     {: RESULT = cons(head, tail); :}
+                  | MemberAccessSuffix:head StorageSuffixes:tail
+                     {: RESULT = cons(head, tail); :}
+                  | Epsilon
+                     {: RESULT = nil(); :}
+                  ;
 
-TypedStorageExtension ::= COLON:l Type:type
-                           {: RESULT = (base) -> withRange(new TypedStorage(base, type), lleft, typeright); :}
-                        ;
+TypedStorageSuffix ::= COLON:l Type:type
+                        {: RESULT = (base) -> withRange(new TypedStorage(base, type), lleft, typeright); :}
+                     ;
 
-MemberAccessExtension ::= DOT:l Identifier:member
-                           {: RESULT = (base) -> withRange(new MemberAccess(base, member), lleft, memberright); :}
-                        ;
+MemberAccessSuffix ::= DOT:l Identifier:member
+                        {: RESULT = (base) -> withRange(new MemberAccess(base, member), lleft, memberright); :}
+                     ;
+
+Memory ::= Storage:storage AMPERSAND:anchor MemorySuffixes:suffixes
+            {: RESULT = withRange(new DereferencedStorage(storage), anchorleft, anchorright);
+               for (var constructor : suffixes) {
+                   RESULT = constructor.apply(RESULT);
+               }
+            :}
+         ;
+
+MemorySuffixes ::= MemoryMemberSuffix:head MemorySuffixes:tail
+                    {: RESULT = cons(head, tail); :}
+                 | DereferencedMemorySuffix:head MemorySuffixes:tail
+                    {: RESULT = cons(head, tail); :}
+                 | Epsilon
+                    {: RESULT = nil(); :}
+                 ;
+
+DereferencedMemorySuffix ::= AMPERSAND:anchor
+                              {: RESULT = (base) -> withRange(new DereferencedMemory(base), anchorleft, anchorright); :}
+                           ;
+
+MemoryMemberSuffix ::= DOT:l Identifier:member
+                        {: RESULT = (base) -> withRange(new MemoryMemberAccess(base, member), lleft, memberright); :}
+                     ;
 
 //
 //
@@ -298,10 +366,10 @@ ArithmeticBinary ::= PAREN_L:l ResourceExpression:lhs BinaryOperator:op Resource
                      {: RESULT = withRange(new ArithmeticBinary(lhs, op, rhs), lhsleft, rhsright); :}
                    ;
 
-ArithmeticValue ::= PAREN_L:l ResourceExpression:value PAREN_R:r
-                     {: RESULT = withRange(new ArithmeticValue(value), lleft, rright); :}
-                  | ResourceExpression:value
+ArithmeticValue ::= ResourceExpression:value
                      {: RESULT = withRange(new ArithmeticValue(value), valueleft, valueright); :}
+                  | PAREN_L:l ResourceExpression:value PAREN_R:r
+                     {: RESULT = withRange(new ArithmeticValue(value), lleft, rright); :}
                   ;
 
 ConditionalExpression ::= ComparativeBinary:binary
@@ -310,8 +378,6 @@ ConditionalExpression ::= ComparativeBinary:binary
 
 ComparativeBinary ::= PAREN_L:l ResourceExpression:lhs ComparisonOperator:op ResourceExpression:rhs PAREN_R:r
                        {: RESULT = withRange(new ComparativeBinary(lhs, op, rhs), lleft, rright); :}
-                    | ResourceExpression:lhs ComparisonOperator:op ResourceExpression:rhs
-                       {: RESULT = withRange(new ComparativeBinary(lhs, op, rhs), lhsleft, rhsright); :}
                     ;
 
 //
@@ -322,11 +388,17 @@ Type ::= NamedType:type
           {: RESULT = type; :}
        | StructureType:type
           {: RESULT = type; :}
+       | ReferenceType:type
+          {: RESULT = type; :}
        ;
 
 NamedType ::= Identifier:name
                {: RESULT = withRange(new NamedType(name), nameleft, nameright); :}
             ;
+
+ReferenceType ::= AMPERSAND:anchor Type:type
+                   {: RESULT = withRange(new ReferenceType(type), anchorleft, anchorright); :}
+                ;
 
 StructureType ::= CURL_L:l StructureTypeMemberList:members CURL_R:r
                    {: RESULT = withRange(new StructureType(members), lleft, rright); :}

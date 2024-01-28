@@ -1,75 +1,48 @@
 package ara.storage
 
+import ara.storage.extensions.ForMemoryPaths
+import ara.storage.extensions.ForResourcePath
+import ara.storage.extensions.ForResources
 import ara.syntax.Syntax
 
 object ResourceAllocation {
 
-    fun Syntax.Storage.asResourcePath(): ResourcePath = when (this) {
-        is Syntax.NamedStorage ->
-            ResourcePath.ofIdentifier(this.name)
+    fun Syntax.Instruction.resourcesCreated(): Collection<Syntax.ResourceExpression> =
+        ForResources.resourcesCreated(this)
 
-        is Syntax.TypedStorage ->
-            this.storage.asResourcePath()
+    fun Syntax.Instruction.resourcesDestroyed(): Collection<Syntax.ResourceExpression> =
+        ForResources.resourcesDestroyed(this)
 
-        is Syntax.MemberAccess ->
-            this.storage.asResourcePath().appended(this.member)
-    }
+    fun Syntax.Instruction.resources(): Collection<Syntax.ResourceExpression> =
+        resourcesCreated() + resourcesDestroyed()
 
-    fun Syntax.ResourceExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {
-        is Syntax.Storage ->
-            listOf(this.asResourcePath())
-
-        is Syntax.IntegerLiteral ->
-            emptyList()
-
-        is Syntax.StructureLiteral ->
-            this.members.flatMap { it.value.asResourcePaths() }
-    }
 
     fun Syntax.Instruction.variablesCreated(): Collection<ResourcePath> =
         this.resourcesCreated().flatMap { it.asResourcePaths() }
 
-    fun Syntax.Instruction.resourcesCreated(): Collection<Syntax.ResourceExpression> = when (this) {
-        is Syntax.ArithmeticAssignment ->
-            listOf(this.dst)
-
-        is Syntax.MultiAssignment ->
-            this.dstList
-
-        is Syntax.Call ->
-            this.dstList
-
-        is Syntax.Conditional, is Syntax.Unconditional ->
-            emptyList()
-    }
-
     fun Syntax.Instruction.variablesDestroyed(): Collection<ResourcePath> =
         this.resourcesDestroyed().flatMap { it.asResourcePaths() }
 
-    fun Syntax.Instruction.resourcesDestroyed(): Collection<Syntax.ResourceExpression> = when (this) {
-        is Syntax.ArithmeticAssignment ->
-            listOf(this.src)
 
-        is Syntax.MultiAssignment ->
-            this.srcList
+    fun Syntax.Storage.asResourcePath(): ResourcePath =
+        ForResourcePath.asResourcePath(this)
 
-        is Syntax.Call ->
-            this.srcList
+    fun Syntax.ResourceExpression.asResourcePaths(): Collection<ResourcePath> =
+        ForResourcePath.asResourcePaths(this)
 
-        is Syntax.Conditional, is Syntax.Unconditional ->
-            emptyList()
-    }
+    fun Syntax.ArithmeticExpression.asResourcePaths(): Collection<ResourcePath> =
+        ForResourcePath.asResourcePaths(this)
 
-    fun Syntax.ArithmeticExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {
-        is Syntax.ArithmeticBinary ->
-            this.lhs.asResourcePaths() + this.rhs.asResourcePaths()
+    fun Syntax.ConditionalExpression.asResourcePaths(): Collection<ResourcePath> =
+        ForResourcePath.asResourcePaths(this)
 
-        is Syntax.ArithmeticValue ->
-            this.value.asResourcePaths()
-    }
 
-    fun Syntax.ConditionalExpression.asResourcePaths(): Collection<ResourcePath> = when (this) {
-        is Syntax.ComparativeBinary ->
-            this.lhs.asResourcePaths() + this.rhs.asResourcePaths()
-    }
+    fun Syntax.ResourceExpression.allMemoryReferences(): Collection<Syntax.Memory> =
+        ForMemoryPaths.allMemoryReferences(this)
+
+    fun Syntax.ResourceExpression.asMemoryPaths(): Collection<MemoryPath> =
+        ForMemoryPaths.asMemoryPaths(this)
+
+    fun Syntax.Memory.asMemoryPath(): MemoryPath =
+        ForMemoryPaths.asMemoryPath(this)
 }

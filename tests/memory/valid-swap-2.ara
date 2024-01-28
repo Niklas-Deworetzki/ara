@@ -1,0 +1,6 @@
+
+type Pair = { x: Int, y: Int }
+
+routine mem_swap(x: Int, y: Int, ref: &Pair -> x, y, ref) {
+    (ref&.x, ref&.y, x, y) := (x, y, ref&.x, ref&.y)
+}

@@ -9,13 +9,13 @@ routine fac(n: Integer) -> (result: Integer) {
     result.value := 1
     -> Entry
 
-    Entry, Loop <- (result.value == 1)
+    <- Entry, Loop (result.value == 1)
         ({product = result.value, multiplier = n.value}) := call multiply ({multiplicant = result.value, multiplier = n.value})
 
         n.value := n.value - (1 + 0)
-    (n.value == 0) -> Exit, Loop
+    -> Exit, Loop (n.value == 0)
 
-    Exit <-
+    <- Exit
     0 := n.value
 }
 

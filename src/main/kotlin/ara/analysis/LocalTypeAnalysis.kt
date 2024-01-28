@@ -8,8 +8,9 @@ import ara.syntax.Syntax
 import ara.syntax.Syntax.ComparisonOperator.*
 import ara.syntax.Typeable
 import ara.syntax.extensions.lookupVariableType
-import ara.syntax.extensions.routines
 import ara.types.Type
+import ara.types.extensions.getMembersType
+import ara.types.extensions.getReferenceBase
 import ara.utils.combineWith
 
 /**
@@ -20,11 +21,9 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
     override fun reportTypeError(message: Message): Message =
         reportError(message)
 
-    override fun runAnalysis() {
-        for (routine in program.routines) {
-            InstructionTypeChecker(routine).check()
-            ensureVariablesHaveInstantiatedTypes(routine)
-        }
+    override fun runAnalysis() = forEachRoutineIn(program) {
+        InstructionTypeChecker(routine).check()
+        ensureVariablesHaveInstantiatedTypes(routine)
     }
 
     private fun ensureVariablesHaveInstantiatedTypes(routine: Syntax.RoutineDefinition) {
@@ -62,14 +61,29 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
                 is Syntax.StructureLiteral ->
                     checkStructureLiteral(this)
 
+                is Syntax.NullReferenceLiteral ->
+                    Type.Reference(Type.Variable())
+
+                is Syntax.AllocationExpression ->
+                    checkAllocationExpression(this)
+
                 is Syntax.MemberAccess ->
-                    checkMemberAccess(this)
+                    checkMemberAccess(this.storage, this.member)
 
                 is Syntax.NamedStorage ->
                     checkNamedStorage(this)
 
                 is Syntax.TypedStorage ->
                     checkTypedStorage(this)
+
+                is Syntax.DereferencedStorage ->
+                    checkDereference(this.storage)
+
+                is Syntax.DereferencedMemory ->
+                    checkDereference(this.memory)
+
+                is Syntax.MemoryMemberAccess ->
+                    checkMemberAccess(this.memory, this.member)
 
                 is Syntax.ArithmeticValue ->
                     this.value.computedType()
@@ -172,16 +186,9 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
             return Type.fromMembers(typedMembers)
         }
 
-        private fun checkMemberAccess(memberAccess: Syntax.MemberAccess): Type {
-            val structureType = memberAccess.storage.computedType()
-            val memberType = structureType.getMemberType(memberAccess.member.name)
-
-            if (memberType == null) {
-                reportError("Type $structureType does not have a member named ${memberAccess.member}.")
-                    .withPositionOf(memberAccess.member)
-                return Type.Variable()
-            }
-            return memberType
+        private fun checkAllocationExpression(expression: Syntax.AllocationExpression): Type {
+            val valueType = expression.value.computedType()
+            return Type.Reference(valueType)
         }
 
         private fun checkNamedStorage(storage: Syntax.NamedStorage): Type {
@@ -203,6 +210,37 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
                 "Type of expression must be compatible with type defined type hint."
             }
             return hintedType
+        }
+
+        private fun checkMemberAccess(typeable: Typeable, member: Syntax.Identifier): Type {
+            val structureType = typeable.computedType()
+            val memberType = structureType.getMembersType(member.name)
+
+            if (memberType == null) {
+                val message = reportError("Type $structureType does not have a member named ${member}.")
+                    .withPositionOf(member)
+
+                val isReferenceToMatchingType = structureType
+                    .getReferenceBase()
+                    ?.getMembersType(member.name) != null
+                if (isReferenceToMatchingType) {
+                    message.withAdditionalInfo("Perhaps a dereference is missing?")
+                }
+                return Type.Variable()
+            }
+            return memberType
+        }
+
+        private fun checkDereference(reference: Typeable): Type {
+            val storageType = reference.computedType()
+            val referenceBase = storageType.getReferenceBase()
+
+            if (referenceBase == null) {
+                reportError("Value must be a reference as required by dereference operator.")
+                    .withPositionOf(reference)
+                return Type.Variable()
+            }
+            return referenceBase
         }
 
         private fun checkArithmeticBinary(binary: Syntax.ArithmeticBinary): Type {
@@ -244,16 +282,5 @@ class LocalTypeAnalysis(private val program: Syntax.Program) : Analysis<Unit>(),
             }
             return Type.Comparison
         }
-    }
-
-    private tailrec fun Type.getMemberType(name: String): Type? = when (this) {
-        is Type.Structure ->
-            members.find { it.name == name }?.type
-
-        is Type.Variable ->
-            type?.getMemberType(name)
-
-        else ->
-            null
     }
 }

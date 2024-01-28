@@ -10,10 +10,10 @@ class TestFailure(
 
     override fun toString(): String = when {
         unexpectedErrors.isNotEmpty() ->
-            formatExpectations("Unexpected errors reported:", unexpectedErrors)
+            formatExpectations("Reported errors that were not expected:", unexpectedErrors)
 
         missingErrors.isNotEmpty() ->
-            formatExpectations("Unreported errors expected:", missingErrors)
+            formatExpectations("Expected errors that were not reported:", missingErrors)
 
         else ->
             "$message"

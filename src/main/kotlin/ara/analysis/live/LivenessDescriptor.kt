@@ -1,12 +1,13 @@
 package ara.analysis.live
 
+import ara.Direction
 import ara.analysis.live.LivenessState.*
 import ara.position.Range
 import ara.storage.ResourcePath
 import ara.storage.StorageDescriptor
 import ara.syntax.Syntax
 
-class LivenessDescriptor : StorageDescriptor<LivenessState> {
+class LivenessDescriptor : StorageDescriptor.WithGetSet<LivenessState, LivenessState> {
 
     constructor(routine: Syntax.RoutineDefinition, defaultState: LivenessState) :
             super(fromEnvironment(routine.localEnvironment, defaultState))
@@ -127,5 +128,16 @@ class LivenessDescriptor : StorageDescriptor<LivenessState> {
                 Unknown ->
                     this
             }
+    }
+
+    companion object {
+        fun fromParameterList(routine: Syntax.RoutineDefinition, direction: Direction): LivenessDescriptor {
+            val live = LivenessDescriptor(routine, defaultState = Finalized(emptySet()))
+            val parameters = direction.choose(routine.inputParameters, routine.outputParameters)
+            for (parameter in parameters) {
+                live += ResourcePath.ofIdentifier(parameter.name) to parameter.range
+            }
+            return live
+        }
     }
 }

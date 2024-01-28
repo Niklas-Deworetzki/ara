@@ -39,9 +39,7 @@ class TypeDefinitionAnalysis(private val program: Syntax.Program) : Analysis<Uni
         }
     }
 
-    private fun computeDefinedType(
-        definition: Syntax.TypeDefinition
-    ) {
+    private fun computeDefinedType(definition: Syntax.TypeDefinition) {
         val context = TypeComputation(program.environment, definition.type)
         val computedType = includeAnalysis(context)
 

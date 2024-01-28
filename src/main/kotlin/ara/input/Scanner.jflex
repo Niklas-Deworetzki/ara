@@ -1,5 +1,6 @@
 package ara.input;
 
+import java.util.List;
 import java_cup.runtime.*;
 import ara.input.*;
 import ara.input.symbol.*;
@@ -40,33 +41,47 @@ import static ara.input.Sym.*;
             return Character.toString(character);
         }
     }
+
+    private List<String> getCommentLines() {
+        return yytext().lines()
+            .filter(line -> !line.isBlank())
+            .map(line -> line.substring(1))
+            .toList();
+    }
 %}
 
 WhiteSpace  = \s+
 
 LineComment = "//".*
-HashComment = "#".*
+HashComment = ("#".*[\n\r]*)+
 
 Identifier  = [a-zA-Z_][a-zA-Z0-9_]*
 Decimal     = [0-9]+
 
 %%
 
-{WhiteSpace}                         { /* Ignore whitespace */  }
+{WhiteSpace}                         { /* Ignore whitespace */ }
 {LineComment}                        { /* Ignore comments */ }
-{HashComment}                        { return token(HASHCOMMENT, yytext().substring(1)); }
-
+{HashComment}                        { if (yychar == 0) {
+                                        return token(HASHCOMMENT, getCommentLines());
+                                       } else {
+                                        /* Ignore comments */
+                                       }
+                                     }
 
 "routine"   { return token(ROUTINE); }
 "type"      { return token(TYPE); }
 "call"      { return token(CALL); }
 "uncall"    { return token(UNCALL); }
+"null"      { return token(NULL); }
 
 ":"         { return token(COLON); }
 ","         { return token(COMMA); }
 "."         { return token(DOT); }
 "="         { return token(EQ); }
 ":="        { return token(ASSIGNMENT); }
+"&"         { return token(AMPERSAND); }
+"&("        { return token(AMPERSAND_PAREN_L); }
 
 "+"         { return token(OPERATOR_ADD); }
 "-"         { return token(OPERATOR_SUB); }

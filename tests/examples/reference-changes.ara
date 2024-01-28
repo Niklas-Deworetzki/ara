@@ -1,0 +1,19 @@
+// Shows that parameters can be updated by reference.
+
+type Pair = { x: Int, y: Int }
+
+routine main( -> pair: Pair) {
+    (ref) := call alloc(2)
+    (ref) := call update(ref)
+    &(pair) := ref
+}
+
+routine alloc(n: Int -> pair: &Pair) {
+    x := 0 + n
+    y := n
+    pair := &({ x = x, y = y })
+}
+
+routine update(pair: &Pair -> pair) {
+    pair&.x := pair&.x - 1
+}

@@ -1,5 +1,6 @@
 package ara.analysis
 
+import ara.storage.ResourceAllocation.resources
 import ara.syntax.Syntax
 import ara.types.Environment
 
@@ -12,11 +13,9 @@ import ara.types.Environment
 class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<Unit>() {
     private lateinit var currentScope: Environment
 
-    override fun runAnalysis() = program.definitions
-        .filterIsInstance<Syntax.RoutineDefinition>()
-        .forEach { routine ->
-            routine.localEnvironment = initializeLocalScope(routine)
-        }
+    override fun runAnalysis() = forEachRoutineIn(program) {
+        routine.localEnvironment = initializeLocalScope(routine)
+    }
 
     private fun initializeLocalScope(routine: Syntax.RoutineDefinition): Environment {
         currentScope = Environment(program.environment)
@@ -36,13 +35,7 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
         is Syntax.TypedStorage ->
             declare(expression.storage)
 
-        is Syntax.MemberAccess ->
-            Unit
-
-        is Syntax.IntegerLiteral ->
-            Unit
-
-        is Syntax.StructureLiteral ->
+        else ->
             Unit
     }
 
@@ -65,26 +58,6 @@ class LocalDeclarationAnalysis(private val program: Syntax.Program) : Analysis<U
         return encounteredConflicts == 0
     }
 
-    private fun declareFromInstruction(instruction: Syntax.Instruction) = when (instruction) {
-        is Syntax.ArithmeticAssignment -> {
-            declare(instruction.src)
-            declare(instruction.dst)
-        }
-
-        is Syntax.MultiAssignment -> {
-            instruction.srcList.forEach(::declare)
-            instruction.dstList.forEach(::declare)
-        }
-
-        is Syntax.Call -> {
-            instruction.srcList.forEach(::declare)
-            instruction.dstList.forEach(::declare)
-        }
-
-        is Syntax.Conditional ->
-            Unit
-
-        is Syntax.Unconditional ->
-            Unit
-    }
+    private fun declareFromInstruction(instruction: Syntax.Instruction) =
+        instruction.resources().forEach(::declare)
 }

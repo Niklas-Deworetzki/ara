@@ -4,6 +4,6 @@
 type A = { m: Int }
 
 routine foo(a: Int, m: A) -> (b: Int, m: A) {
-    (m <= 0) -> L, R
-    L, R <- (0 == 0)
+    -> L, R (m <= 0)
+    <- L, R (0 == 0)
 }

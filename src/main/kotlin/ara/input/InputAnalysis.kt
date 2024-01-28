@@ -6,6 +6,7 @@ import ara.input.symbol.Token
 import ara.position.InputSource
 import ara.position.Range
 import ara.reporting.Message
+import ara.reporting.Message.Companion.quoted
 import ara.syntax.Syntax
 import ara.utils.formatting.formatToHumanReadable
 import ara.utils.intersects
@@ -45,14 +46,15 @@ class InputAnalysis(val source: InputSource) : Analysis<Syntax.Program>() {
             ) to "a comparison operator",
             setOf(Sym.CALL) to "call",
             setOf(Sym.UNCALL) to "uncall",
-            setOf(Sym.EQ) to "=",
-            setOf(Sym.ASSIGNMENT) to ":=",
+            setOf(Sym.EQ) to "definition operator " + "=".quoted(),
+            setOf(Sym.ASSIGNMENT) to "assignment operator " + ":=".quoted(),
+            setOf(Sym.ARROW_L) to "left arrow " + "<-".quoted(),
+            setOf(Sym.ARROW_R) to "right arrow " + "->".quoted(),
             setOf(Sym.CURL_L) to "{",
             setOf(Sym.CURL_R) to "}",
             setOf(Sym.PAREN_L) to "(",
             setOf(Sym.PAREN_R) to ")",
-            setOf(Sym.ARROW_L) to "<-",
-            setOf(Sym.ARROW_R) to "->"
+            setOf(Sym.AMPERSAND) to "&"
         )
 
         fun translateTokenIdsToExpectedStructures(tokenIds: Set<Int>): String? {
@@ -81,13 +83,25 @@ class InputAnalysis(val source: InputSource) : Analysis<Syntax.Program>() {
                 }
                 parseResult.value as Syntax.Program
             } catch (exception: Exception) {
+                if (!isCupException(exception)) {
+                    throw exception
+                }
                 reportError(UNRECOVERABLE_SYNTAX_ERRORS)
                 Syntax.Program(emptyList())
             }
         }
 
+    private fun isCupException(exception: Exception) =
+        // Cup directly throws Error upon syntax errors, but no subclass of it.
+        exception.javaClass == java.lang.Exception::class.java
+
     inner class ErrorMessageProducingReporter : SyntaxErrorReporter {
-        override fun reportSyntaxError(token: Token, expectedTokenIds: List<Int>) {
+        override fun reportCustomError(message: String, range: Range) {
+            val error = syntaxError(message)
+            reportError(error.withPosition(range))
+        }
+
+        override fun reportWrongToken(token: Token, expectedTokenIds: List<Int>) {
             val range = Range(source, token.left.toLong(), token.right.toLong())
             val message = generateErrorMessage(token, expectedTokenIds)
             reportError(message.withPosition(range))

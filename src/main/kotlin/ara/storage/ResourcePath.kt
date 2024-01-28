@@ -14,9 +14,6 @@ private constructor(private val path: List<String>) {
     fun subPath(indexIncluded: Int): ResourcePath =
         ResourcePath(path.subList(0, indexIncluded + 1))
 
-    fun appended(accessor: Syntax.Identifier): ResourcePath =
-        ResourcePath(path + accessor.name)
-
     override fun equals(other: Any?): Boolean {
         return other is ResourcePath && other.path == this.path
     }
@@ -28,6 +25,9 @@ private constructor(private val path: List<String>) {
     override fun toString(): String {
         return path.joinToString(separator = ".")
     }
+
+    fun withAccessedMember(member: Syntax.Identifier): ResourcePath =
+        ResourcePath(this.path + member.name)
 
     companion object {
         fun of(segments: Iterable<String>): ResourcePath =

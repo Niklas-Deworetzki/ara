@@ -1,0 +1,54 @@
+
+type List = { head: Int, tail: &List }
+
+routine main ( -> size: Int, sum: Int, list: &List) {
+    (list) := call repeat(4, 100)
+    (list, size) := call size(list)
+    (list, sum) := call sum(list)
+}
+
+routine repeat(value: Int, times: Int -> list: &List) {
+    list := null
+    -> Enter
+
+    <- Enter,Loop (list == null)
+        times := times - 1
+        head := 0 ^ value
+
+        list := &({ head = head, tail = list })
+    -> Exit,Loop (times == 0)
+
+    <- Exit
+    0 := times
+    0 := value ^ list&.head
+}
+
+routine size(list: &List -> list: &List, size: Int) {
+    -> ToEmpty, ToNonEmpty (list == null)
+
+    <- ToEmpty
+        size := 0
+    -> FromEmpty
+
+    <- ToNonEmpty
+        (list&.tail, size) := call size(list&.tail)
+        size := size + 1
+    -> FromNonEmpty
+
+    <- FromEmpty, FromNonEmpty (list == null)
+}
+
+routine sum(list: &List -> list: &List, sum: Int) {
+    -> ToEmpty, ToNonEmpty (list == null)
+
+    <- ToEmpty
+        sum := 0
+    -> FromEmpty
+
+    <- ToNonEmpty
+        (list&.tail, sum) := call sum(list&.tail)
+        sum := sum + list&.head
+    -> FromNonEmpty
+
+    <- FromEmpty, FromNonEmpty (list == null)
+}

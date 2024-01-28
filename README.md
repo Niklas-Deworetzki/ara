@@ -39,7 +39,7 @@ As the name suggests, this language is attended as a reversible assembly languag
 The type system is simple, allowing the user to specify two different types of types: *Integers* and *Structures* with named members.
 Type aliases can be specified by introducing a type definition using the `type` keyword.
 Every member of a structure type have a name and another type.
-Types are specified either by name (referring to the primitive integer type `Int` or any user-defined type alias) or as a structure type expression.
+Types are specified either by name (referring to the primitive integer type `Int` or any user-defined type alias), as a structure type expression or as a reference to another type.
 Two types are considered equivalent if they are structurally equivalent.
 
 ```
@@ -48,6 +48,9 @@ type Alias = Int
 
 // An alias for a structure type with two members.
 type StructureTypeName = { member1: Int, member2: Alias }
+
+// An alias for a reference to a type named 'T'
+type Ref = &T
 ```
 
 ### Routines
@@ -160,6 +163,31 @@ point.x := point.x + 3
 
 When some storage is initialized, it or the structure it is part of must have been finalized before, similar to how variables can only be initialized if they are not initialized already.
 Similarly, finalizing some storage is only possible if it or the structure it is part of has been initialized before.
+
+### Structured Managed Memory
+
+There are two ways to interact with memory:
+Memory is allocated (and therefore also released) using a resource expression `&()`.
+It finalizes the expression between the parentheses and places its value into some newly allocated memory on the right-hand side of an assignment.
+Or initializes the said expression using the value referenced by a reference value before releasing the reference.
+
+```
+// Allocates some memory, writes the literal 4 to it and assigns the reference to 'allocated'.
+ref := &(4)
+
+// Releases the reference 'ref' and uses the referenced value to initialize 'x'.
+&(x) := ref
+```
+
+In-memory values can be accessed similar to resource path expressions, with the addition of using `&` as a suffix operator to follow a reference.
+Values in memory must **always be live**.
+If they are consumed on the right-hand side of an assignment, they must be initialized on the left-hand side.
+
+```
+routine increment_reference( ref: &{ mem: Int } -> ref ) {
+    ref&.mem := ref&.mem + 1
+}
+```
 
 ### Automated Liveness Analysis
 

@@ -13,7 +13,7 @@ import ara.storage.ResourcePath
 import ara.syntax.Syntax
 import ara.syntax.extensions.getDereferencedStorage
 
-class BlockLevelResourceAnalysis(routine: Syntax.RoutineDefinition, val block: Block): Analysis<Unit>() {
+class BlockLevelResourceAnalysis(routine: Syntax.RoutineDefinition, val block: Block) : Analysis<Unit>() {
     private val currentState = routine.liveness.getIn(block).copy()
 
     override fun runAnalysis() {
@@ -46,8 +46,11 @@ class BlockLevelResourceAnalysis(routine: Syntax.RoutineDefinition, val block: B
         for (resource in expression.asResourcePaths()) {
             val state = currentState[resource]
             if (state !is LivenessState.Initialized) {
+                val reason = // Message "already been finalized" is misleading if there is no initializer.
+                    if (state.initializers.isEmpty()) "it has not been initialized"
+                    else "it has already been finalized."
                 val error =
-                    reportError("Cannot finalize ${resource.quoted()} as it has already been finalized.")
+                    reportError("Cannot finalize ${resource.quoted()} as $reason.")
                         .withPositionOf(expression)
 
                 for (initializer in state.initializers) {
